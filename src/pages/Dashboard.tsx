@@ -11,10 +11,15 @@ export default function Dashboard() {
   useEffect(() => {
     if (token) {
       fetchUser(token);
+    }
+  }, [token, fetchUser]);
+
+  useEffect(() => {
+    if (token && user?.login) {
       fetchRepos(token);
       fetchStats(token);
     }
-  }, [token, fetchUser, fetchRepos, fetchStats]);
+  }, [token, user?.login, fetchRepos, fetchStats]);
 
   if (isLoading && !user) {
     return (

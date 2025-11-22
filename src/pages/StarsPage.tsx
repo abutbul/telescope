@@ -24,7 +24,8 @@ export default function StarsPage() {
     if (token) {
       fetchMyStars(token);
     }
-  }, [token, fetchMyStars]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleSearch = async () => {
     if (!token || !searchUsername) return;

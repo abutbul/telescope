@@ -1,12 +1,17 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
+
+interface RequestError {
+  url: string;
+  error?: string;
+}
 
 test.describe('GitHub Login Investigation', () => {
   test('investigate login flow on deployed site', async ({ page }) => {
     console.log('=== Starting GitHub Login Investigation ===\n');
     
     // Navigate to the deployed site
-    await page.goto('https://abutbul.github.io/telescope/');
-    console.log('✓ Navigated to: https://abutbul.github.io/telescope/\n');
+    await page.goto('/');
+    console.log(`✓ Navigated to: ${page.url()}\n`);
     
     // Wait for page to load
     await page.waitForLoadState('networkidle');
@@ -29,7 +34,7 @@ test.describe('GitHub Login Investigation', () => {
       });
       
       let deviceFlowRequested = false;
-      let requestErrors: any[] = [];
+      const requestErrors: RequestError[] = [];
       
       page.on('request', request => {
         if (request.url().includes('github.com')) {
@@ -112,11 +117,11 @@ test.describe('GitHub Login Investigation', () => {
       
       // Check local/session storage
       const sessionStorage = await page.evaluate(() => {
-        const storage: any = {};
+        const storage: Record<string, string> = {};
         for (let i = 0; i < window.sessionStorage.length; i++) {
           const key = window.sessionStorage.key(i);
           if (key) {
-            storage[key] = window.sessionStorage.getItem(key);
+            storage[key] = window.sessionStorage.getItem(key) ?? '';
           }
         }
         return storage;
