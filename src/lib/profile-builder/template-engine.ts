@@ -59,21 +59,22 @@ export class TemplateEngine {
     const generator = new WidgetGenerator(this.username, this.telescopeStats);
 
     widgets.forEach((widget) => {
+      const marker = `<!-- WIDGET:${widget.type} -->`;
+
       if (!widget.enabled) {
         // Remove marker if widget is disabled
-        markdown = markdown.replace(widget.id, '');
+        markdown = markdown.replace(marker, '');
         return;
       }
 
       const widgetContent = generator.generate(widget);
       
       // Replace the comment marker with actual content
-      const marker = `<!-- WIDGET:${widget.type} -->`;
       markdown = markdown.replace(marker, widgetContent);
     });
 
     // Clean up any remaining widget markers
-    markdown = markdown.replace(/<!-- WIDGET:\w+ -->/g, '');
+    markdown = markdown.replace(/<!-- WIDGET:[^>]+ -->/g, '');
 
     return markdown;
   }
