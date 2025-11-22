@@ -8,10 +8,12 @@ interface AuthState {
   error: string | null;
   deviceCode: string | null;
   verificationUri: string | null;
+  tokenType: 'pat' | 'oauth' | null;
 }
 
 interface AuthActions {
   initAuth: () => void;
+  loginWithPAT: (token: string) => Promise<void>;
   startDeviceFlow: () => Promise<void>;
   completeAuth: (token: string) => void;
   logout: () => void;
@@ -25,13 +27,35 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   error: null,
   deviceCode: null,
   verificationUri: null,
+  tokenType: null,
 
   initAuth: () => {
     const token = GitHubAuth.getToken();
+    const tokenType = GitHubAuth.getTokenType();
     set({
       token,
+      tokenType,
       isAuthenticated: token !== null,
     });
+  },
+
+  loginWithPAT: async (token: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await GitHubAuth.authenticateWithPAT(token);
+      set({
+        token,
+        tokenType: 'pat',
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Invalid token',
+        isLoading: false,
+      });
+      throw error;
+    }
   },
 
   startDeviceFlow: async () => {
@@ -46,6 +70,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
       set({
         token,
+        tokenType: 'oauth',
         isAuthenticated: true,
         isLoading: false,
         deviceCode: null,
@@ -72,6 +97,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
     GitHubAuth.clearToken();
     set({
       token: null,
+      tokenType: null,
       isAuthenticated: false,
       deviceCode: null,
       verificationUri: null,

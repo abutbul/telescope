@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../stores/auth-store';
 import { Github } from 'lucide-react';
+import PATLogin from './PATLogin';
 
 export default function LoginButton() {
   const { isAuthenticated, isLoading, deviceCode, verificationUri, startDeviceFlow } = useAuthStore();
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showPATLogin, setShowPATLogin] = useState(false);
 
   useEffect(() => {
     if (deviceCode && verificationUri) {
@@ -16,8 +18,12 @@ export default function LoginButton() {
     return null;
   }
 
-  const handleLogin = async () => {
+  const handleDeviceFlow = async () => {
     await startDeviceFlow();
+  };
+
+  const handlePATLogin = () => {
+    setShowPATLogin(true);
   };
 
   if (showInstructions && deviceCode && verificationUri) {
@@ -55,9 +61,29 @@ export default function LoginButton() {
   }
 
   return (
-    <button onClick={handleLogin} disabled={isLoading} className="btn-primary flex items-center gap-2">
-      <Github className="w-5 h-5" />
-      {isLoading ? 'Connecting...' : 'Sign in with GitHub'}
-    </button>
+    <>
+      {showPATLogin && <PATLogin onClose={() => setShowPATLogin(false)} />}
+      
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button 
+          onClick={handlePATLogin} 
+          disabled={isLoading} 
+          className="btn-primary flex items-center justify-center gap-2"
+        >
+          <Github className="w-5 h-5" />
+          Sign in with Personal Token
+        </button>
+        
+        <button 
+          onClick={handleDeviceFlow} 
+          disabled={isLoading} 
+          className="btn-secondary flex items-center justify-center gap-2"
+          title="Requires backend proxy - may not work on GitHub Pages"
+        >
+          <Github className="w-5 h-5" />
+          {isLoading ? 'Connecting...' : 'Device Flow (Beta)'}
+        </button>
+      </div>
+    </>
   );
 }
