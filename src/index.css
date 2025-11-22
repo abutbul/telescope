@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 13 17 23;
+    --foreground: 201 209 217;
+  }
+  
+  * {
+    @apply border-github-border;
+  }
+  
+  body {
+    @apply bg-github-dark text-github-text;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-github-dimmed border border-github-border rounded-lg p-6;
+  }
+  
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200;
+  }
+  
+  .btn-primary {
+    @apply btn bg-github-accent text-white hover:bg-blue-600;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-github-dimmed border border-github-border hover:bg-gray-700;
+  }
+  
+  .btn-danger {
+    @apply btn bg-github-danger text-white hover:bg-red-600;
+  }
+  
+  .input {
+    @apply bg-github-dark border border-github-border rounded-md px-4 py-2 text-github-text placeholder:text-github-muted focus:outline-none focus:ring-2 focus:ring-github-accent;
+  }
+  
+  .link {
+    @apply text-github-accent hover:underline;
+  }
+}
