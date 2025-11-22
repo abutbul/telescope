@@ -13,7 +13,8 @@ export default defineConfig({
   base: '/telescope/',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
