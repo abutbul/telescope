@@ -18,7 +18,7 @@ Telescope is a client-side web application that provides analytics, automation, 
 
 ## 🚀 Live Demo
 
-Visit [https://yourusername.github.io/telescope](https://yourusername.github.io/telescope) to try it out!
+Visit [https://abutbul.github.io/telescope](https://abutbul.github.io/telescope) to try it out!
 
 ## 📖 Usage
 
