@@ -40,6 +40,7 @@ export class GitHubAPI {
     let page = 1;
     const perPage = 100;
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { data } = username
         ? await this._octokit.rest.repos.listForUser({
@@ -72,6 +73,7 @@ export class GitHubAPI {
     let page = 1;
     const perPage = 100;
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { data } = username
         ? await this._octokit.rest.activity.listReposStarredByUser({
