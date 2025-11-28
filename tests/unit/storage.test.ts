@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BrowserStorage } from '../../src/lib/cache/storage';
 
 describe('BrowserStorage', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.restoreAllMocks();
   });
 
   it('should store and retrieve data', () => {
@@ -54,5 +55,76 @@ describe('BrowserStorage', () => {
 
     expect(BrowserStorage.get('key1')).toBeNull();
     expect(BrowserStorage.get('key2')).toBeNull();
+  });
+
+  it('should return true when set succeeds', () => {
+    const result = BrowserStorage.set('test-key', { data: 'test' });
+    expect(result).toBe(true);
+  });
+
+  it('should handle quota exceeded by clearing old entries and retrying', () => {
+    // Setup: add some entries first
+    BrowserStorage.set('telescope_old1', 'data1');
+    BrowserStorage.set('telescope_old2', 'data2');
+    
+    let callCount = 0;
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    
+    // Mock setItem to fail on first call with QuotaExceededError, then succeed
+    vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      callCount++;
+      if (callCount === 1) {
+        const error = new DOMException('Quota exceeded', 'QuotaExceededError');
+        throw error;
+      }
+      return originalSetItem(key, value);
+    });
+
+    const result = BrowserStorage.set('telescope_new', 'new-data');
+    
+    // Should succeed after retry
+    expect(result).toBe(true);
+    // Should have called setItem at least twice (initial + retry)
+    expect(callCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('should return false after all retries fail', () => {
+    // Mock setItem to always fail with QuotaExceededError
+    vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      const error = new DOMException('Quota exceeded', 'QuotaExceededError');
+      throw error;
+    });
+
+    const result = BrowserStorage.set('telescope_key', 'data');
+    
+    // Should return false after exhausting retries
+    expect(result).toBe(false);
+  });
+
+  it('should clear entries aggressively on repeated quota errors', () => {
+    // Add several entries
+    BrowserStorage.set('telescope_a', 'data-a');
+    BrowserStorage.set('telescope_b', 'data-b');
+    BrowserStorage.set('telescope_c', 'data-c');
+    BrowserStorage.set('telescope_d', 'data-d');
+    
+    let callCount = 0;
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    
+    // Fail first 2 calls, succeed on third
+    vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      callCount++;
+      if (callCount <= 2) {
+        const error = new DOMException('Quota exceeded', 'QuotaExceededError');
+        throw error;
+      }
+      return originalSetItem(key, value);
+    });
+
+    const result = BrowserStorage.set('telescope_new', 'new-data');
+    
+    // Should succeed after aggressive clearing
+    expect(result).toBe(true);
+    expect(callCount).toBe(3);
   });
 });

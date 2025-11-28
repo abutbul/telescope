@@ -8,22 +8,94 @@ export interface CacheEntry<T> {
 
 export class BrowserStorage {
   private static readonly PREFIX = 'telescope_';
+  private static readonly MAX_RETRIES = 2;
+
+  // Get approximate size of localStorage in bytes
+  private static getStorageSize(): number {
+    let total = 0;
+    for (const key in localStorage) {
+      if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+        total += localStorage[key].length * 2; // UTF-16 uses 2 bytes per char
+      }
+    }
+    return total;
+  }
+
+  // Clear entries more aggressively - oldest first, then by size
+  private static clearEntriesAggressively(): void {
+    const entries: { key: string; timestamp: number; size: number }[] = [];
+    
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(this.PREFIX)) continue;
+      
+      try {
+        const item = localStorage.getItem(key);
+        if (!item) continue;
+        
+        const parsed = JSON.parse(item) as CacheEntry<unknown>;
+        entries.push({
+          key,
+          timestamp: parsed.timestamp || 0,
+          size: item.length,
+        });
+      } catch {
+        // Invalid entry, remove it
+        localStorage.removeItem(key);
+      }
+    }
+
+    // If no entries to clear, nothing we can do
+    if (entries.length === 0) {
+      return;
+    }
+
+    // Sort by timestamp (oldest first)
+    entries.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Remove oldest 50% of entries
+    const toRemove = Math.max(1, Math.ceil(entries.length / 2));
+    for (let i = 0; i < toRemove; i++) {
+      localStorage.removeItem(entries[i].key);
+    }
+  }
 
   // Generic cache operations
-  static set<T>(key: string, value: T, ttl: number = 24 * 60 * 60 * 1000): void {
+  static set<T>(key: string, value: T, ttl: number = 24 * 60 * 60 * 1000): boolean {
     const entry: CacheEntry<T> = {
       data: value,
       timestamp: Date.now(),
       ttl,
     };
 
-    try {
-      localStorage.setItem(this.PREFIX + key, JSON.stringify(entry));
-    } catch (error) {
-      console.error('Failed to save to localStorage:', error);
-      // Handle quota exceeded
-      this.clearOldEntries();
+    const fullKey = this.PREFIX + key;
+    const serialized = JSON.stringify(entry);
+
+    for (let attempt = 0; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        localStorage.setItem(fullKey, serialized);
+        return true;
+      } catch (error) {
+        if (error instanceof DOMException && 
+            (error.name === 'QuotaExceededError' || error.code === 22)) {
+          console.warn(`Storage quota exceeded (attempt ${attempt + 1}), clearing old entries...`);
+          
+          if (attempt === 0) {
+            // First attempt: clear expired entries
+            this.clearOldEntries();
+          } else {
+            // Subsequent attempts: clear more aggressively
+            this.clearEntriesAggressively();
+          }
+        } else {
+          console.error('Failed to save to localStorage:', error);
+          return false;
+        }
+      }
     }
+
+    // All retries failed - this is ok, the app should still work without caching
+    console.warn(`Could not cache ${key} after ${this.MAX_RETRIES + 1} attempts. Continuing without cache.`);
+    return false;
   }
 
   static get<T>(key: string): T | null {

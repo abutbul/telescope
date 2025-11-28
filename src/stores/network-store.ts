@@ -74,19 +74,11 @@ export const useNetworkStore = create<NetworkState & NetworkActions>((set) => ({
     set({ isLoading: true, error: null, targetUsername: username });
     try {
       const api = new GitHubAPI(token);
+      // Don't cache target user data - it's temporary and can be very large
+      // (users with thousands of followers would exceed localStorage limits)
       const [followers, following] = await Promise.all([
-        CacheManager.getOrFetch(
-          'followers',
-          username,
-          () => api.getFollowers(username),
-          { ttl: 60 * 60 * 1000 }
-        ),
-        CacheManager.getOrFetch(
-          'following',
-          username,
-          () => api.getFollowing(username),
-          { ttl: 60 * 60 * 1000 }
-        )
+        api.getFollowers(username),
+        api.getFollowing(username),
       ]);
       set({ targetUserFollowers: followers, targetUserFollowing: following, isLoading: false });
     } catch (error) {

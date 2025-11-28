@@ -62,12 +62,9 @@ export const useStarsStore = create<StarsState & StarsActions>((set) => ({
     set({ isLoading: true, error: null, targetUsername: username });
     try {
       const api = new GitHubAPI(token);
-      const stars = await CacheManager.getOrFetch(
-        'stars',
-        username,
-        () => api.getStarredRepos(username),
-        { ttl: 60 * 60 * 1000 } // 1 hour cache for other users
-      );
+      // Don't cache target user's stars - it's temporary and can be very large
+      // (users with thousands of stars would exceed localStorage limits)
+      const stars = await api.getStarredRepos(username);
       set({ targetUserStars: stars, isLoading: false });
     } catch (error) {
       set({
