@@ -40,6 +40,7 @@ interface ProfileBuilderState {
 
   // Actions
   selectTemplate: (template: ProfileTemplate) => void;
+  loadCurrentProfile: () => Promise<void>;
   setFilterCategory: (category: string | null) => void;
   setSearchQuery: (query: string) => void;
 
@@ -123,6 +124,56 @@ export const useProfileBuilderStore = create<ProfileBuilderState>((set, get) => 
 
     // Generate initial preview
     get().generatePreview();
+  },
+
+  loadCurrentProfile: async () => {
+    const user = useUserStore.getState().user;
+    const { profileRepoStatus } = get();
+
+    if (!user) return;
+
+    // Ensure we have the latest status
+    if (!profileRepoStatus) {
+      await get().checkProfileRepoStatus();
+    }
+
+    const currentStatus = get().profileRepoStatus;
+
+    if (!currentStatus?.readmeContent) {
+      throw new Error('No profile README found to load');
+    }
+
+    // Create a dummy template for the current profile
+    const currentProfileTemplate: ProfileTemplate = {
+      id: 'current-profile',
+      name: 'Current Profile',
+      description: 'Your existing GitHub profile README',
+      category: 'professional',
+      preview: '',
+      author: user.login,
+      stars: 0,
+      markdown: currentStatus.readmeContent,
+      variables: [],
+      widgets: [],
+      tags: ['current'],
+      difficulty: 'intermediate',
+      lastUpdated: new Date().toISOString(),
+    };
+
+    const customization: TemplateCustomization = {
+      templateId: 'current-profile',
+      variables: {},
+      widgets: [],
+      rawMarkdown: currentStatus.readmeContent,
+    };
+
+    set({
+      selectedTemplate: currentProfileTemplate,
+      customization,
+      isDirty: false,
+      previewMarkdown: currentStatus.readmeContent,
+      editorMode: 'code', // Force code mode for existing profiles
+    });
   },
 
   setFilterCategory: (category) => set({ filterCategory: category }),
@@ -332,6 +383,7 @@ export const useProfileBuilderStore = create<ProfileBuilderState>((set, get) => 
     }
   },
 
+  // Reset
   reset: () =>
     set({
       selectedTemplate: null,

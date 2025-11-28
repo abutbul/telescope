@@ -247,6 +247,7 @@ describe('useProfileBuilderStore', () => {
 
     const mockManagerInstance = {
       createProfileRepo: vi.fn().mockResolvedValue(undefined),
+      checkProfileRepo: vi.fn().mockResolvedValue({ exists: true }),
     };
     mockProfileRepoManager.mockImplementation(() => mockManagerInstance);
 
@@ -258,6 +259,36 @@ describe('useProfileBuilderStore', () => {
 
     expect(mockManagerInstance.createProfileRepo).toHaveBeenCalledWith('testuser', 'Test description');
     expect(result.current.isDeploying).toBe(false);
+  });
+
+  it('should load current profile', async () => {
+    const mockUser = { login: 'testuser', name: 'Test User' };
+    const mockToken = 'test-token';
+    const mockStatus = { exists: true, readmeContent: '# Current Profile' };
+
+    mockUserStore.getState.mockReturnValue({ user: mockUser });
+    mockAuthStore.getState.mockReturnValue({ token: mockToken });
+
+    // Mock checkProfileRepoStatus to populate profileRepoStatus
+    const mockManagerInstance = {
+      checkProfileRepo: vi.fn().mockResolvedValue(mockStatus),
+    };
+    mockProfileRepoManager.mockImplementation(() => mockManagerInstance);
+
+    const { result } = renderHook(() => useProfileBuilderStore());
+
+    // First ensure status is loaded
+    await act(async () => {
+      await result.current.checkProfileRepoStatus();
+    });
+
+    await act(async () => {
+      await result.current.loadCurrentProfile();
+    });
+
+    expect(result.current.selectedTemplate?.id).toBe('current-profile');
+    expect(result.current.previewMarkdown).toBe('# Current Profile');
+    expect(result.current.editorMode).toBe('code');
   });
 
   it('should reset store', () => {
