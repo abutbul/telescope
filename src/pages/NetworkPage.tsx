@@ -138,10 +138,13 @@ export default function NetworkPage() {
   };
 
   const myFollowingLogins = new Set(myFollowing.map((u) => u.login));
+  const myFollowersLogins = new Set(myFollowers.map((u) => u.login));
   const myStarredRepoNames = new Set(myStars.map((s) => s.repo.full_name));
 
   // Calculate users not yet followed back
   const usersNotFollowedBack = myFollowers.filter(f => !myFollowingLogins.has(f.login));
+  // Calculate users I follow who don't follow me back
+  const usersNotFollowingBack = myFollowing.filter(f => !myFollowersLogins.has(f.login));
 
   const handleSelectAllUsers = () => {
     const users = targetTab === 'following' ? targetUserFollowing : targetUserFollowers;
@@ -200,7 +203,7 @@ export default function NetworkPage() {
     fetchMyNetwork(token, true);
   };
 
-  const renderUserList = (users: typeof myFollowers, showFollowStatus = false) => {
+  const renderUserList = (users: typeof myFollowers, statusType: 'none' | 'following' | 'follows-back' = 'none') => {
     if (users.length === 0) {
       return <p className="text-github-muted py-4 text-center">No users found.</p>;
     }
@@ -209,6 +212,8 @@ export default function NetworkPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto p-1">
         {users.map((user) => {
           const isFollowing = myFollowingLogins.has(user.login);
+          const followsMe = myFollowersLogins.has(user.login);
+          
           return (
             <div key={user.id} className="p-3 border border-github-border rounded-lg flex items-center gap-3 bg-github-dimmed/30 hover:bg-github-dimmed/50 transition-colors">
               <img src={user.avatar_url} alt={user.login} className="w-10 h-10 rounded-full" />
@@ -222,13 +227,22 @@ export default function NetworkPage() {
                   {user.login}
                 </a>
               </div>
-              {showFollowStatus && (
+              {statusType === 'following' && (
                 <span className={`text-xs px-2 py-1 rounded ${
                   isFollowing 
                     ? 'bg-github-success/20 text-github-success' 
                     : 'bg-yellow-500/20 text-yellow-400'
                 }`}>
                   {isFollowing ? 'Following' : 'Not following'}
+                </span>
+              )}
+              {statusType === 'follows-back' && (
+                <span className={`text-xs px-2 py-1 rounded ${
+                  followsMe 
+                    ? 'bg-github-success/20 text-github-success' 
+                    : 'bg-gray-500/20 text-gray-400'
+                }`}>
+                  {followsMe ? 'Follows you' : 'Not following you'}
                 </span>
               )}
             </div>
@@ -345,35 +359,14 @@ export default function NetworkPage() {
             </div>
           </div>
 
-          {/* Copy Network Feature */}
+          {/* Quick Stats */}
           <div className="card">
             <FeatureBox
-              icon={Sparkles}
-              title="Copy Someone's Network"
-              description="Search for a GitHub user to see who they follow. You can then selectively follow the same people to discover interesting developers and projects."
-              variant="action"
-            >
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  placeholder="Enter GitHub username..."
-                  value={searchUsername}
-                  onChange={(e) => setSearchUsername(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="input flex-1"
-                />
-                <button onClick={handleSearch} disabled={isLoading || !searchUsername} className="btn-primary">
-                  {isLoading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4 inline mr-2" />
-                      Search
-                    </>
-                  )}
-                </button>
-              </div>
-            </FeatureBox>
+              icon={Info}
+              title="Network Summary"
+              description={`You have ${usersNotFollowedBack.length} follower${usersNotFollowedBack.length !== 1 ? 's' : ''} you're not following back, and ${usersNotFollowingBack.length} user${usersNotFollowingBack.length !== 1 ? 's' : ''} you follow who don't follow you back.`}
+              variant="info"
+            />
           </div>
         </div>
       )}
@@ -405,27 +398,48 @@ export default function NetworkPage() {
           {/* Followers List */}
           <div className="card">
             <h3 className="text-xl font-bold mb-4">Your Followers</h3>
-            {renderUserList(myFollowers, true)}
+            {renderUserList(myFollowers, 'following')}
           </div>
         </div>
       )}
 
       {activeTab === 'following' && (
         <div className="space-y-6">
-          {/* Info Box */}
-          <div className="card">
-            <FeatureBox
-              icon={Info}
-              title="People You Follow"
-              description="These are the GitHub users you're currently following. Their activity will appear in your dashboard feed."
-              variant="info"
-            />
-          </div>
-
           {/* Following List */}
           <div className="card">
-            <h3 className="text-xl font-bold mb-4">Following ({myFollowing.length})</h3>
-            {renderUserList(myFollowing)}
+            <h3 className="text-xl font-bold mb-4">People You Follow ({myFollowing.length})</h3>
+            {renderUserList(myFollowing, 'follows-back')}
+          </div>
+
+          {/* Copy Network Feature */}
+          <div className="card">
+            <FeatureBox
+              icon={Sparkles}
+              title="Copy Someone's Network"
+              description="Search for a GitHub user to see who they follow. You can then selectively follow the same people to discover interesting developers and projects."
+              variant="action"
+            >
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Enter GitHub username..."
+                  value={searchUsername}
+                  onChange={(e) => setSearchUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="input flex-1"
+                />
+                <button onClick={handleSearch} disabled={isLoading || !searchUsername} className="btn-primary">
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 inline mr-2" />
+                      Search
+                    </>
+                  )}
+                </button>
+              </div>
+            </FeatureBox>
           </div>
         </div>
       )}

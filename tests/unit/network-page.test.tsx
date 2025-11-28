@@ -152,6 +152,9 @@ describe('NetworkPage', () => {
 
     render(<NetworkPage />);
 
+    // Switch to Following tab where the search is now located
+    fireEvent.click(screen.getByText(/My Following/));
+
     const input = screen.getByPlaceholderText('Enter GitHub username...');
     fireEvent.change(input, { target: { value: 'targetuser' } });
     
