@@ -89,9 +89,41 @@ describe('NetworkPage', () => {
 
     render(<NetworkPage />);
 
-    // The text is split between a text node and a span, but getByText with regex matches the container
-    expect(screen.getByText(/Following:/)).toHaveTextContent('Following: 1');
-    expect(screen.getByText(/Followers:/)).toHaveTextContent('Followers: 1');
+    // Check for the labels and counts in the overview tab
+    expect(screen.getByText('Following')).toBeInTheDocument();
+    expect(screen.getByText('Followers')).toBeInTheDocument();
+    
+    // Since there are multiple "1"s (in tabs and in the overview cards), we can be more specific
+    // or just check that the text is present in the document
+    const overviewTab = screen.getByText('Overview');
+    expect(overviewTab).toHaveClass('text-github-accent');
+
+    // Check tabs have counts
+    expect(screen.getByText('My Followers (1)')).toBeInTheDocument();
+    expect(screen.getByText('My Following (1)')).toBeInTheDocument();
+  });
+
+  it('allows following back all followers', async () => {
+    const followers = [{ ...mockUser, id: 2, login: 'follower1' }];
+    const copyFollowingFromUser = vi.fn();
+
+    useNetworkStore.setState({
+      myFollowers: followers,
+      myFollowing: [], // Not following back yet
+      copyFollowingFromUser,
+    });
+
+    render(<NetworkPage />);
+
+    // Switch to Followers tab
+    fireEvent.click(screen.getByText(/My Followers/));
+
+    const followBackButton = screen.getByRole('button', { name: /Follow Back All/i });
+    fireEvent.click(followBackButton);
+
+    await waitFor(() => {
+      expect(copyFollowingFromUser).toHaveBeenCalledWith('test-token', followers);
+    });
   });
 
   it('searches for a user', async () => {

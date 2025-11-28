@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/auth-store';
 import { useStarsStore } from '../stores/stars-store';
-import { Search, Star, Check } from 'lucide-react';
+import { Search, Star, Check, Loader2 } from 'lucide-react';
 
 export default function StarsPage() {
   const token = useAuthStore((state) => state.token);
@@ -41,6 +41,20 @@ export default function StarsPage() {
     setSelectedRepos(newSelected);
   };
 
+  const myStarredRepoNames = new Set(myStars.map((s) => s.repo.full_name));
+
+  const handleSelectAll = () => {
+    const allSelectable = targetUserStars
+      .filter((s) => !myStarredRepoNames.has(s.repo.full_name))
+      .map((s) => s.repo.full_name);
+    
+    if (selectedRepos.size === allSelectable.length) {
+      setSelectedRepos(new Set());
+    } else {
+      setSelectedRepos(new Set(allSelectable));
+    }
+  };
+
   const handleCopyStars = async () => {
     if (!token || selectedRepos.size === 0) return;
 
@@ -52,8 +66,6 @@ export default function StarsPage() {
     setSelectedRepos(new Set());
     fetchMyStars(token, true);
   };
-
-  const myStarredRepoNames = new Set(myStars.map((s) => s.repo.full_name));
 
   return (
     <div className="space-y-8">
@@ -101,11 +113,24 @@ export default function StarsPage() {
             className="input flex-1"
           />
           <button onClick={handleSearch} disabled={isLoading} className="btn-primary">
-            <Search className="w-5 h-5 inline mr-2" />
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 inline mr-2 animate-spin" />
+            ) : (
+              <Search className="w-5 h-5 inline mr-2" />
+            )}
             Search
           </button>
         </div>
       </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="card flex flex-col items-center justify-center py-12">
+          <Star className="w-16 h-16 text-github-accent animate-spin mb-4" />
+          <p className="text-lg font-semibold">Loading stars...</p>
+          <p className="text-github-muted">This might take a moment for users with many stars.</p>
+        </div>
+      )}
 
       {/* Copy Progress */}
       {copyProgress.inProgress && (
@@ -140,6 +165,15 @@ export default function StarsPage() {
               {targetUsername}'s Stars ({targetUserStars.length})
             </h2>
             <div className="flex gap-2">
+              <button
+                onClick={handleSelectAll}
+                className="btn-secondary"
+                disabled={targetUserStars.length === 0}
+              >
+                {selectedRepos.size === targetUserStars.filter(s => !myStarredRepoNames.has(s.repo.full_name)).length && selectedRepos.size > 0
+                  ? 'Deselect All' 
+                  : 'Select All'}
+              </button>
               <button
                 onClick={handleCopyStars}
                 disabled={selectedRepos.size === 0 || copyProgress.inProgress || targetUserStars.length === 0}
