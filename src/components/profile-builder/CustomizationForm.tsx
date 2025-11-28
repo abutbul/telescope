@@ -1,4 +1,4 @@
-import { Settings, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Settings, ToggleLeft, ToggleRight, Info } from 'lucide-react';
 import { useProfileBuilderStore } from '../../stores/profile-builder-store';
 
 export default function CustomizationForm() {
@@ -7,6 +7,10 @@ export default function CustomizationForm() {
 
   if (!selectedTemplate || !customization) return null;
 
+  const hasVariables = selectedTemplate.variables.length > 0;
+  const hasWidgets = customization.widgets.length > 0;
+  const hasCustomizationOptions = hasVariables || hasWidgets;
+
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 h-fit">
       <div className="flex items-center gap-3 mb-6">
@@ -14,12 +18,22 @@ export default function CustomizationForm() {
         <h2 className="text-xl font-semibold text-white">Customize Template</h2>
       </div>
 
-      <div className="space-y-6">
-        {/* Variables */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-400 mb-4">Profile Information</h3>
-          <div className="space-y-4">
-            {selectedTemplate.variables.map((variable) => {
+      {!hasCustomizationOptions ? (
+        <div className="text-center py-8">
+          <Info className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-400 mb-2">No customization options available</p>
+          <p className="text-sm text-gray-500">
+            This profile uses raw markdown. Use the Markdown Editor to make changes directly.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Variables */}
+          {hasVariables && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-400 mb-4">Profile Information</h3>
+              <div className="space-y-4">
+                {selectedTemplate.variables.map((variable) => {
               const value = customization.variables[variable.key] || '';
 
               return (
@@ -53,46 +67,50 @@ export default function CustomizationForm() {
                 </div>
               );
             })}
-          </div>
-        </div>
+              </div>
+            </div>
+          )}
 
-        {/* Widgets */}
-        <div>
-          <h3 className="text-sm font-medium text-gray-400 mb-4">Widgets & Features</h3>
-          <div className="space-y-3">
-            {customization.widgets.map((widget) => {
-              const slot = selectedTemplate.widgets.find((w) => w.id === widget.id);
-              if (!slot) return null;
+          {/* Widgets */}
+          {hasWidgets && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-400 mb-4">Widgets & Features</h3>
+              <div className="space-y-3">
+                {customization.widgets.map((widget) => {
+                  const slot = selectedTemplate.widgets.find((w) => w.id === widget.id);
+                  if (!slot) return null;
 
-              return (
-                <div
-                  key={widget.id}
-                  className="flex items-center justify-between p-3 bg-gray-900 border border-gray-700 rounded-lg"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-white">{slot.name}</div>
-                    <div className="text-xs text-gray-500">{slot.description}</div>
-                  </div>
-                  <button
-                    onClick={() => toggleWidget(widget.id)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      widget.enabled
-                        ? 'text-blue-400 hover:text-blue-300'
-                        : 'text-gray-600 hover:text-gray-500'
-                    }`}
-                  >
-                    {widget.enabled ? (
-                      <ToggleRight className="h-6 w-6" />
-                    ) : (
-                      <ToggleLeft className="h-6 w-6" />
-                    )}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                  return (
+                    <div
+                      key={widget.id}
+                      className="flex items-center justify-between p-3 bg-gray-900 border border-gray-700 rounded-lg"
+                    >
+                      <div>
+                        <div className="text-sm font-medium text-white">{slot.name}</div>
+                        <div className="text-xs text-gray-500">{slot.description}</div>
+                      </div>
+                      <button
+                        onClick={() => toggleWidget(widget.id)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          widget.enabled
+                            ? 'text-blue-400 hover:text-blue-300'
+                            : 'text-gray-600 hover:text-gray-500'
+                        }`}
+                      >
+                        {widget.enabled ? (
+                          <ToggleRight className="h-6 w-6" />
+                        ) : (
+                          <ToggleLeft className="h-6 w-6" />
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

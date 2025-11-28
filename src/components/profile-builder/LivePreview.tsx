@@ -1,10 +1,19 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { Eye } from 'lucide-react';
 import { useProfileBuilderStore } from '../../stores/profile-builder-store';
 
+// Remove HTML comments from markdown for cleaner preview
+function stripHtmlComments(markdown: string): string {
+  return markdown.replace(/<!--[\s\S]*?-->/g, '');
+}
+
 export default function LivePreview() {
   const { previewMarkdown } = useProfileBuilderStore();
+
+  // Clean the markdown by removing HTML comments
+  const cleanMarkdown = stripHtmlComments(previewMarkdown);
 
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden h-[700px] flex flex-col">
@@ -14,9 +23,20 @@ export default function LivePreview() {
       </div>
 
       <div className="flex-1 overflow-auto p-6 bg-white">
-        <div className="prose prose-slate max-w-none">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewMarkdown}</ReactMarkdown>
-        </div>
+        {cleanMarkdown ? (
+          <div className="prose prose-slate max-w-none">
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]} 
+              rehypePlugins={[rehypeRaw]}
+            >
+              {cleanMarkdown}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-400">
+            Select a template or start editing to see preview
+          </div>
+        )}
       </div>
     </div>
   );

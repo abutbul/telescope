@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Code2 } from 'lucide-react';
+import { Code2, Loader2 } from 'lucide-react';
 import { useProfileBuilderStore } from '../../stores/profile-builder-store';
 
 export default function MarkdownEditor() {
@@ -32,6 +32,11 @@ export default function MarkdownEditor() {
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
           theme="vs-dark"
+          loading={
+            <div className="flex items-center justify-center h-full bg-gray-900">
+              <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
+            </div>
+          }
           options={{
             minimap: { enabled: false },
             fontSize: 14,
