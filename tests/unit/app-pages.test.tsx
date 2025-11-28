@@ -87,7 +87,14 @@ describe('Dashboard page', () => {
   });
 
   it('shows fallback when user data cannot be loaded', () => {
-    useUserStore.setState({ user: null, repos: [], stats: null, isLoading: false, error: 'boom' });
+    useUserStore.setState({
+      user: null,
+      repos: [],
+      stats: null,
+      isLoading: false,
+      error: 'boom',
+      fetchUser: vi.fn(),
+    });
 
     render(<Dashboard />);
 

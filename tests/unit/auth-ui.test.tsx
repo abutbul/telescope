@@ -28,7 +28,7 @@ describe('Auth UI flows', () => {
 
     render(<LoginButton />);
 
-    fireEvent.click(screen.getByRole('button', { name: /sign in with github/i }));
+    fireEvent.click(screen.getByRole('button', { name: /device flow/i }));
 
     await waitFor(() => {
       expect(startDeviceFlow).toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('Auth UI flows', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('button', { name: /sign in with github/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in with personal token/i })).toBeInTheDocument();
   });
 
   it('shows dashboard link on the home page for authenticated users', () => {
@@ -199,7 +199,7 @@ describe('Auth UI flows', () => {
     );
 
     expect(initAuth).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: /sign in with github/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in with personal token/i })).toBeInTheDocument();
   });
 
   it('renders dashboard route when user is authenticated', () => {
