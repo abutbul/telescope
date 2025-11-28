@@ -118,6 +118,78 @@ export class GitHubAPI {
     }
   }
 
+  // Network operations
+  async getFollowers(username?: string): Promise<GitHubUser[]> {
+    const followers: GitHubUser[] = [];
+    let page = 1;
+    const perPage = 100;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data } = username
+        ? await this._octokit.rest.users.listFollowersForUser({
+            username,
+            per_page: perPage,
+            page,
+          })
+        : await this._octokit.rest.users.listFollowersForAuthenticatedUser({
+            per_page: perPage,
+            page,
+          });
+
+      followers.push(...(data as unknown as GitHubUser[]));
+
+      if (data.length < perPage) break;
+      page++;
+    }
+
+    return followers;
+  }
+
+  async getFollowing(username?: string): Promise<GitHubUser[]> {
+    const following: GitHubUser[] = [];
+    let page = 1;
+    const perPage = 100;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data } = username
+        ? await this._octokit.rest.users.listFollowingForUser({
+            username,
+            per_page: perPage,
+            page,
+          })
+        : await this._octokit.rest.users.listFollowedByAuthenticatedUser({
+            per_page: perPage,
+            page,
+          });
+
+      following.push(...(data as unknown as GitHubUser[]));
+
+      if (data.length < perPage) break;
+      page++;
+    }
+
+    return following;
+  }
+
+  async followUser(username: string): Promise<void> {
+    await this._octokit.rest.users.follow({ username });
+  }
+
+  async unfollowUser(username: string): Promise<void> {
+    await this._octokit.rest.users.unfollow({ username });
+  }
+
+  async isFollowingUser(username: string): Promise<boolean> {
+    try {
+      await this._octokit.rest.users.checkPersonIsFollowedByAuthenticated({ username });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Analytics operations
   async getAccountStats(username?: string): Promise<AccountStats> {
     const user = username ? await this.getUser(username) : await this.getAuthenticatedUser();

@@ -1,6 +1,6 @@
 import { BrowserStorage } from './storage';
 
-export type CacheKey = 'user' | 'repos' | 'stars' | 'stats';
+export type CacheKey = 'user' | 'repos' | 'stars' | 'stats' | 'followers' | 'following';
 
 export interface CacheOptions {
   ttl?: number; // milliseconds
@@ -40,6 +40,10 @@ export class CacheManager {
         return BrowserStorage.getCachedStars(username) as T | null;
       case 'stats':
         return BrowserStorage.getCachedStats(username) as T | null;
+      case 'followers':
+        return BrowserStorage.getCachedFollowers(username) as T | null;
+      case 'following':
+        return BrowserStorage.getCachedFollowing(username) as T | null;
       default:
         return null;
     }
@@ -59,6 +63,12 @@ export class CacheManager {
       case 'stats':
         BrowserStorage.cacheStats(username, data, ttl);
         break;
+      case 'followers':
+        BrowserStorage.cacheFollowers(username, data, ttl);
+        break;
+      case 'following':
+        BrowserStorage.cacheFollowing(username, data, ttl);
+        break;
     }
   }
 
@@ -67,7 +77,7 @@ export class CacheManager {
   }
 
   static invalidateAll(username: string): void {
-    const keys: CacheKey[] = ['user', 'repos', 'stars', 'stats'];
+    const keys: CacheKey[] = ['user', 'repos', 'stars', 'stats', 'followers', 'following'];
     keys.forEach((key) => this.invalidate(key, username));
   }
 

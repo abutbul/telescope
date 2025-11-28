@@ -23,6 +23,9 @@ export default function Layout() {
                 <Link to="/stars" className="text-github-text hover:text-white">
                   Stars
                 </Link>
+                <Link to="/network" className="text-github-text hover:text-white">
+                  Network
+                </Link>
                 <Link to="/fork" className="text-github-text hover:text-white">
                   Fork Management
                 </Link>

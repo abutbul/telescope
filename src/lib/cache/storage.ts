@@ -115,4 +115,20 @@ export class BrowserStorage {
   static getCachedStats(username: string): unknown | null {
     return this.get(`stats_${username}`);
   }
+
+  static cacheFollowers(username: string, data: unknown, ttl?: number): void {
+    this.set(`followers_${username}`, data, ttl);
+  }
+
+  static getCachedFollowers(username: string): unknown | null {
+    return this.get(`followers_${username}`);
+  }
+
+  static cacheFollowing(username: string, data: unknown, ttl?: number): void {
+    this.set(`following_${username}`, data, ttl);
+  }
+
+  static getCachedFollowing(username: string): unknown | null {
+    return this.get(`following_${username}`);
+  }
 }

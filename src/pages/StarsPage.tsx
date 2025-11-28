@@ -64,6 +64,32 @@ export default function StarsPage() {
           repositories
         </p>
 
+        <div className="mb-8">
+          <h3 className="text-xl font-bold mb-4">Your Starred Repositories</h3>
+          <div className="max-h-[300px] overflow-y-auto border border-github-border rounded-lg p-4 bg-github-dimmed/30">
+            {myStars.length === 0 ? (
+              <p className="text-github-muted">No starred repositories yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {myStars.map((star) => (
+                  <div key={star.repo.id} className="flex justify-between items-center p-2 hover:bg-github-dimmed rounded transition-colors">
+                    <a 
+                      href={star.repo.html_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="link truncate mr-2"
+                      title={star.repo.full_name}
+                    >
+                      {star.repo.full_name}
+                    </a>
+                    <span className="text-xs text-github-muted whitespace-nowrap">⭐ {star.repo.stargazers_count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Search for user */}
         <div className="flex gap-4">
           <input
@@ -107,7 +133,7 @@ export default function StarsPage() {
       )}
 
       {/* Target User Stars */}
-      {targetUsername && targetUserStars.length > 0 && (
+      {targetUsername && !isLoading && (
         <div className="card">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold">
@@ -116,7 +142,7 @@ export default function StarsPage() {
             <div className="flex gap-2">
               <button
                 onClick={handleCopyStars}
-                disabled={selectedRepos.size === 0 || copyProgress.inProgress}
+                disabled={selectedRepos.size === 0 || copyProgress.inProgress || targetUserStars.length === 0}
                 className="btn-primary"
               >
                 <Star className="w-4 h-4 inline mr-2" />
@@ -128,7 +154,12 @@ export default function StarsPage() {
             </div>
           </div>
 
-          <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          {targetUserStars.length === 0 ? (
+            <div className="text-center py-8 text-github-muted">
+              <p className="text-lg">This user hasn't starred any repositories yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
             {targetUserStars.map((star) => {
               const repo = star.repo;
               const isAlreadyStarred = myStarredRepoNames.has(repo.full_name);
@@ -186,6 +217,7 @@ export default function StarsPage() {
               );
             })}
           </div>
+          )}
         </div>
       )}
     </div>

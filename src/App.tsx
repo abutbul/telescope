@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import HomePage from './pages/HomePage';
 import Dashboard from './pages/Dashboard';
 import StarsPage from './pages/StarsPage';
+import NetworkPage from './pages/NetworkPage';
 import ForkManagement from './pages/ForkManagement';
 import ProfileBuilder from './pages/ProfileBuilder';
 import AuthCallback from './components/auth/AuthCallback';
@@ -35,6 +36,14 @@ function App() {
           element={
             <ProtectedRoute>
               <StarsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="network"
+          element={
+            <ProtectedRoute>
+              <NetworkPage />
             </ProtectedRoute>
           }
         />
