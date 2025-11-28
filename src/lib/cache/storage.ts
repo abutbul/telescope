@@ -10,17 +10,6 @@ export class BrowserStorage {
   private static readonly PREFIX = 'telescope_';
   private static readonly MAX_RETRIES = 2;
 
-  // Get approximate size of localStorage in bytes
-  private static getStorageSize(): number {
-    let total = 0;
-    for (const key in localStorage) {
-      if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
-        total += localStorage[key].length * 2; // UTF-16 uses 2 bytes per char
-      }
-    }
-    return total;
-  }
-
   // Clear entries more aggressively - oldest first, then by size
   private static clearEntriesAggressively(): void {
     const entries: { key: string; timestamp: number; size: number }[] = [];
