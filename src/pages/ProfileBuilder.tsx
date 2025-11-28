@@ -23,8 +23,7 @@ export default function ProfileBuilder() {
     if (user) {
       checkProfileRepoStatus();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, checkProfileRepoStatus]);
 
   const handleDeploy = async () => {
     try {

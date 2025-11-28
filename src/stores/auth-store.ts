@@ -48,6 +48,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
         tokenType: 'pat',
         isAuthenticated: true,
         isLoading: false,
+        error: null,
       });
     } catch (error) {
       set({
@@ -85,9 +86,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   },
 
   completeAuth: (token: string) => {
-    GitHubAuth.saveToken(token);
+    GitHubAuth.saveToken(token, 'oauth');
     set({
       token,
+      tokenType: 'oauth',
       isAuthenticated: true,
       isLoading: false,
     });

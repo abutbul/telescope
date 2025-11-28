@@ -1,16 +1,20 @@
 import { test } from '@playwright/test';
 
+declare const process: { env?: Record<string, string | undefined> };
+
 interface RequestError {
   url: string;
   error?: string;
 }
+
+const TARGET_URL = process?.env?.E2E_TARGET_URL ?? 'https://abutbul.github.io/telescope/';
 
 test.describe('GitHub Login Investigation', () => {
   test('investigate login flow on deployed site', async ({ page }) => {
     console.log('=== Starting GitHub Login Investigation ===\n');
     
     // Navigate to the deployed site
-    await page.goto('/');
+    await page.goto(TARGET_URL, { waitUntil: 'networkidle' });
     console.log(`✓ Navigated to: ${page.url()}\n`);
     
     // Wait for page to load
