@@ -2,7 +2,61 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../stores/auth-store';
 import { useNetworkStore } from '../stores/network-store';
 import { useStarsStore } from '../stores/stars-store';
-import { Search, UserPlus, Check, Users, Star, Loader2 } from 'lucide-react';
+import { Search, UserPlus, Check, Users, Star, Loader2, Info, Sparkles } from 'lucide-react';
+
+type TabType = 'overview' | 'followers' | 'following' | 'stars';
+
+// Persist tab state in sessionStorage so refresh keeps you on the same tab
+const getInitialTab = (): TabType => {
+  if (typeof window !== 'undefined') {
+    const saved = sessionStorage.getItem('networkPageTab');
+    if (saved && ['overview', 'followers', 'following', 'stars'].includes(saved)) {
+      return saved as TabType;
+    }
+  }
+  return 'overview';
+};
+
+// Reusable attention box component for feature highlights
+function FeatureBox({ 
+  icon: Icon, 
+  title, 
+  description, 
+  children, 
+  variant = 'info' 
+}: { 
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  children?: React.ReactNode;
+  variant?: 'info' | 'action' | 'success';
+}) {
+  const variants = {
+    info: 'border-blue-500/30 bg-blue-500/5',
+    action: 'border-purple-500/30 bg-purple-500/5',
+    success: 'border-green-500/30 bg-green-500/5',
+  };
+  const iconColors = {
+    info: 'text-blue-400',
+    action: 'text-purple-400',
+    success: 'text-green-400',
+  };
+
+  return (
+    <div className={`rounded-lg border-2 ${variants[variant]} p-4`}>
+      <div className="flex items-start gap-3">
+        <div className={`p-2 rounded-lg bg-github-dimmed ${iconColors[variant]}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <div className="flex-1">
+          <h4 className="font-semibold text-github-fg mb-1">{title}</h4>
+          <p className="text-sm text-github-muted mb-3">{description}</p>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function NetworkPage() {
   const token = useAuthStore((state) => state.token);
@@ -35,8 +89,13 @@ export default function NetworkPage() {
   const [searchUsername, setSearchUsername] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'followers' | 'following' | 'stars'>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab);
   const [targetTab, setTargetTab] = useState<'following' | 'followers'>('following');
+
+  // Persist tab changes to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('networkPageTab', activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     if (token) {
@@ -80,6 +139,9 @@ export default function NetworkPage() {
 
   const myFollowingLogins = new Set(myFollowing.map((u) => u.login));
   const myStarredRepoNames = new Set(myStars.map((s) => s.repo.full_name));
+
+  // Calculate users not yet followed back
+  const usersNotFollowedBack = myFollowers.filter(f => !myFollowingLogins.has(f.login));
 
   const handleSelectAllUsers = () => {
     const users = targetTab === 'following' ? targetUserFollowing : targetUserFollowers;
@@ -132,24 +194,23 @@ export default function NetworkPage() {
 
   const handleFollowBackAll = async () => {
     if (!token) return;
-    const usersToFollowBack = myFollowers.filter(follower => !myFollowingLogins.has(follower.login));
-    if (usersToFollowBack.length === 0) return;
+    if (usersNotFollowedBack.length === 0) return;
     
-    await copyFollowingFromUser(token, usersToFollowBack);
+    await copyFollowingFromUser(token, usersNotFollowedBack);
     fetchMyNetwork(token, true);
   };
 
   const renderUserList = (users: typeof myFollowers, showFollowStatus = false) => {
     if (users.length === 0) {
-      return <p className="text-github-muted py-4">No users found.</p>;
+      return <p className="text-github-muted py-4 text-center">No users found.</p>;
     }
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto p-1">
         {users.map((user) => {
           const isFollowing = myFollowingLogins.has(user.login);
           return (
-            <div key={user.id} className="p-3 border border-github-border rounded-lg flex items-center gap-3 bg-github-dimmed/30">
+            <div key={user.id} className="p-3 border border-github-border rounded-lg flex items-center gap-3 bg-github-dimmed/30 hover:bg-github-dimmed/50 transition-colors">
               <img src={user.avatar_url} alt={user.login} className="w-10 h-10 rounded-full" />
               <div className="flex-1 min-w-0">
                 <a
@@ -161,9 +222,13 @@ export default function NetworkPage() {
                   {user.login}
                 </a>
               </div>
-              {showFollowStatus && isFollowing && (
-                <span className="text-xs bg-github-success/20 text-github-success px-2 py-1 rounded">
-                  Following
+              {showFollowStatus && (
+                <span className={`text-xs px-2 py-1 rounded ${
+                  isFollowing 
+                    ? 'bg-github-success/20 text-github-success' 
+                    : 'bg-yellow-500/20 text-yellow-400'
+                }`}>
+                  {isFollowing ? 'Following' : 'Not following'}
                 </span>
               )}
             </div>
@@ -176,213 +241,272 @@ export default function NetworkPage() {
   const isLoading = isNetworkLoading || isStarsLoading;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Header Card with Tabs */}
       <div className="card">
-        <h1 className="text-3xl font-bold mb-4">Network Manager</h1>
+        <h1 className="text-3xl font-bold mb-2">Network Manager</h1>
+        <p className="text-github-muted mb-6">Manage your GitHub network, discover new connections, and organize your stars.</p>
         
-        <div className="flex gap-4 mb-6 border-b border-github-border overflow-x-auto">
+        <div className="flex gap-2 border-b border-github-border overflow-x-auto pb-px">
           <button
-            className={`pb-2 px-4 font-semibold whitespace-nowrap ${activeTab === 'overview' ? 'text-github-accent border-b-2 border-github-accent' : 'text-github-muted hover:text-github-fg'}`}
+            className={`pb-3 px-4 font-semibold whitespace-nowrap transition-colors relative ${activeTab === 'overview' ? 'text-github-accent' : 'text-github-muted hover:text-github-fg'}`}
             onClick={() => setActiveTab('overview')}
           >
             Overview
+            {activeTab === 'overview' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-github-accent" />}
           </button>
           <button
-            className={`pb-2 px-4 font-semibold whitespace-nowrap ${activeTab === 'followers' ? 'text-github-accent border-b-2 border-github-accent' : 'text-github-muted hover:text-github-fg'}`}
+            className={`pb-3 px-4 font-semibold whitespace-nowrap transition-colors relative ${activeTab === 'followers' ? 'text-github-accent' : 'text-github-muted hover:text-github-fg'}`}
             onClick={() => setActiveTab('followers')}
           >
             My Followers ({myFollowers.length})
+            {activeTab === 'followers' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-github-accent" />}
           </button>
           <button
-            className={`pb-2 px-4 font-semibold whitespace-nowrap ${activeTab === 'following' ? 'text-github-accent border-b-2 border-github-accent' : 'text-github-muted hover:text-github-fg'}`}
+            className={`pb-3 px-4 font-semibold whitespace-nowrap transition-colors relative ${activeTab === 'following' ? 'text-github-accent' : 'text-github-muted hover:text-github-fg'}`}
             onClick={() => setActiveTab('following')}
           >
             My Following ({myFollowing.length})
+            {activeTab === 'following' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-github-accent" />}
           </button>
           <button
-            className={`pb-2 px-4 font-semibold whitespace-nowrap ${activeTab === 'stars' ? 'text-github-accent border-b-2 border-github-accent' : 'text-github-muted hover:text-github-fg'}`}
+            className={`pb-3 px-4 font-semibold whitespace-nowrap transition-colors relative ${activeTab === 'stars' ? 'text-github-accent' : 'text-github-muted hover:text-github-fg'}`}
             onClick={() => setActiveTab('stars')}
           >
             My Stars ({myStars.length})
+            {activeTab === 'stars' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-github-accent" />}
           </button>
         </div>
-
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <div className="flex gap-8">
-              <div className="text-center p-4 bg-github-dimmed/30 rounded-lg flex-1">
-                <p className="text-github-muted mb-1">Following</p>
-                <p className="text-3xl font-bold text-github-accent">{myFollowing.length}</p>
-              </div>
-              <div className="text-center p-4 bg-github-dimmed/30 rounded-lg flex-1">
-                <p className="text-github-muted mb-1">Followers</p>
-                <p className="text-3xl font-bold text-github-accent">{myFollowers.length}</p>
-              </div>
-              <div className="text-center p-4 bg-github-dimmed/30 rounded-lg flex-1">
-                <p className="text-github-muted mb-1">Stars</p>
-                <p className="text-3xl font-bold text-github-accent">{myStars.length}</p>
-              </div>
-            </div>
-
-            {/* Search for user */}
-            <div className="flex gap-4">
-              <input
-                type="text"
-                placeholder="Enter GitHub username to see who they follow"
-                value={searchUsername}
-                onChange={(e) => setSearchUsername(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="input flex-1"
-              />
-              <button onClick={handleSearch} disabled={isLoading} className="btn-primary">
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 inline mr-2 animate-spin" />
-                ) : (
-                  <Search className="w-5 h-5 inline mr-2" />
-                )}
-                Search
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'followers' && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold">People following you</h3>
-              <button 
-                onClick={handleFollowBackAll}
-                disabled={networkCopyProgress.inProgress || myFollowers.every(f => myFollowingLogins.has(f.login))}
-                className="btn-primary"
-              >
-                <Users className="w-4 h-4 inline mr-2" />
-                Follow Back All
-              </button>
-            </div>
-            {renderUserList(myFollowers, true)}
-          </div>
-        )}
-
-        {activeTab === 'following' && (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">People you follow</h3>
-            {renderUserList(myFollowing)}
-          </div>
-        )}
-
-        {activeTab === 'stars' && (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold">Your Starred Repositories</h3>
-            
-            {/* Search for user stars */}
-            <div className="flex gap-4 mb-4">
-              <input
-                type="text"
-                placeholder="Enter GitHub username to see their stars"
-                value={searchUsername}
-                onChange={(e) => setSearchUsername(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="input flex-1"
-              />
-              <button onClick={handleSearch} disabled={isLoading} className="btn-primary">
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 inline mr-2 animate-spin" />
-                ) : (
-                  <Search className="w-5 h-5 inline mr-2" />
-                )}
-                Search
-              </button>
-            </div>
-
-            <div className="max-h-[400px] overflow-y-auto border border-github-border rounded-lg p-4 bg-github-dimmed/30">
-              {myStars.length === 0 ? (
-                <p className="text-github-muted">No starred repositories yet.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {myStars.map((star) => (
-                    <div key={star.repo.id} className="flex justify-between items-center p-2 hover:bg-github-dimmed rounded transition-colors">
-                      <a 
-                        href={star.repo.html_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="link truncate mr-2"
-                        title={star.repo.full_name}
-                      >
-                        {star.repo.full_name}
-                      </a>
-                      <span className="text-xs text-github-muted whitespace-nowrap">⭐ {star.repo.stargazers_count}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Network Copy Progress */}
+      {/* Progress Indicators */}
       {networkCopyProgress.inProgress && (
-        <div className="card">
-          <h3 className="text-xl font-bold mb-4">Following Users...</h3>
+        <div className="card border-github-accent/50">
+          <div className="flex items-center gap-3 mb-3">
+            <Loader2 className="w-5 h-5 text-github-accent animate-spin" />
+            <h3 className="text-lg font-bold">Following Users...</h3>
+          </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>
-                Progress: {networkCopyProgress.completed} / {networkCopyProgress.total}
-              </span>
+              <span>Progress: {networkCopyProgress.completed} / {networkCopyProgress.total}</span>
               {networkCopyProgress.failed > 0 && (
                 <span className="text-github-danger">Failed: {networkCopyProgress.failed}</span>
               )}
             </div>
             <div className="w-full h-2 bg-github-dark rounded-full overflow-hidden">
               <div
-                className="h-full bg-github-accent transition-all"
-                style={{
-                  width: `${(networkCopyProgress.completed / networkCopyProgress.total) * 100}%`,
-                }}
+                className="h-full bg-github-accent transition-all duration-300"
+                style={{ width: `${(networkCopyProgress.completed / networkCopyProgress.total) * 100}%` }}
               />
             </div>
           </div>
         </div>
       )}
 
-      {/* Stars Copy Progress */}
       {starsCopyProgress.inProgress && (
-        <div className="card">
-          <h3 className="text-xl font-bold mb-4">Copying Stars...</h3>
+        <div className="card border-github-accent/50">
+          <div className="flex items-center gap-3 mb-3">
+            <Loader2 className="w-5 h-5 text-github-accent animate-spin" />
+            <h3 className="text-lg font-bold">Copying Stars...</h3>
+          </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>
-                Progress: {starsCopyProgress.completed} / {starsCopyProgress.total}
-              </span>
+              <span>Progress: {starsCopyProgress.completed} / {starsCopyProgress.total}</span>
               {starsCopyProgress.failed > 0 && (
                 <span className="text-github-danger">Failed: {starsCopyProgress.failed}</span>
               )}
             </div>
             <div className="w-full h-2 bg-github-dark rounded-full overflow-hidden">
               <div
-                className="h-full bg-github-accent transition-all"
-                style={{
-                  width: `${(starsCopyProgress.completed / starsCopyProgress.total) * 100}%`,
-                }}
+                className="h-full bg-github-accent transition-all duration-300"
+                style={{ width: `${(starsCopyProgress.completed / starsCopyProgress.total) * 100}%` }}
               />
             </div>
           </div>
         </div>
       )}
 
-      {/* Target User Network */}
-      {targetUsername && !isNetworkLoading && activeTab !== 'stars' && (
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card text-center">
+              <p className="text-github-muted text-sm mb-1">Following</p>
+              <p className="text-4xl font-bold text-github-accent">{myFollowing.length}</p>
+            </div>
+            <div className="card text-center">
+              <p className="text-github-muted text-sm mb-1">Followers</p>
+              <p className="text-4xl font-bold text-github-accent">{myFollowers.length}</p>
+            </div>
+            <div className="card text-center">
+              <p className="text-github-muted text-sm mb-1">Starred Repos</p>
+              <p className="text-4xl font-bold text-github-accent">{myStars.length}</p>
+            </div>
+          </div>
+
+          {/* Copy Network Feature */}
+          <div className="card">
+            <FeatureBox
+              icon={Sparkles}
+              title="Copy Someone's Network"
+              description="Search for a GitHub user to see who they follow. You can then selectively follow the same people to discover interesting developers and projects."
+              variant="action"
+            >
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Enter GitHub username..."
+                  value={searchUsername}
+                  onChange={(e) => setSearchUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="input flex-1"
+                />
+                <button onClick={handleSearch} disabled={isLoading || !searchUsername} className="btn-primary">
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 inline mr-2" />
+                      Search
+                    </>
+                  )}
+                </button>
+              </div>
+            </FeatureBox>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'followers' && (
+        <div className="space-y-6">
+          {/* Follow Back Feature Box */}
+          <div className="card">
+            <FeatureBox
+              icon={Users}
+              title="Follow Back Your Followers"
+              description={usersNotFollowedBack.length > 0 
+                ? `You have ${usersNotFollowedBack.length} follower${usersNotFollowedBack.length === 1 ? '' : 's'} that you're not following back. Click below to follow them all at once.`
+                : "You're following all your followers. Great job maintaining your network!"
+              }
+              variant={usersNotFollowedBack.length > 0 ? 'action' : 'success'}
+            >
+              <button 
+                onClick={handleFollowBackAll}
+                disabled={networkCopyProgress.inProgress || usersNotFollowedBack.length === 0}
+                className="btn-primary"
+              >
+                <UserPlus className="w-4 h-4 inline mr-2" />
+                Follow Back All ({usersNotFollowedBack.length})
+              </button>
+            </FeatureBox>
+          </div>
+
+          {/* Followers List */}
+          <div className="card">
+            <h3 className="text-xl font-bold mb-4">Your Followers</h3>
+            {renderUserList(myFollowers, true)}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'following' && (
+        <div className="space-y-6">
+          {/* Info Box */}
+          <div className="card">
+            <FeatureBox
+              icon={Info}
+              title="People You Follow"
+              description="These are the GitHub users you're currently following. Their activity will appear in your dashboard feed."
+              variant="info"
+            />
+          </div>
+
+          {/* Following List */}
+          <div className="card">
+            <h3 className="text-xl font-bold mb-4">Following ({myFollowing.length})</h3>
+            {renderUserList(myFollowing)}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'stars' && (
+        <div className="space-y-6">
+          {/* Copy Stars Feature */}
+          <div className="card">
+            <FeatureBox
+              icon={Sparkles}
+              title="Copy Someone's Stars"
+              description="Search for a GitHub user to see their starred repositories. Discover interesting projects that other developers find valuable."
+              variant="action"
+            >
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Enter GitHub username..."
+                  value={searchUsername}
+                  onChange={(e) => setSearchUsername(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="input flex-1"
+                />
+                <button onClick={handleSearch} disabled={isLoading || !searchUsername} className="btn-primary">
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 inline mr-2" />
+                      Search
+                    </>
+                  )}
+                </button>
+              </div>
+            </FeatureBox>
+          </div>
+
+          {/* My Stars List */}
+          <div className="card">
+            <h3 className="text-xl font-bold mb-4">Your Starred Repositories ({myStars.length})</h3>
+            <div className="max-h-[400px] overflow-y-auto rounded-lg border border-github-border bg-github-dark/50">
+              {myStars.length === 0 ? (
+                <p className="text-github-muted p-4 text-center">No starred repositories yet.</p>
+              ) : (
+                <div className="divide-y divide-github-border">
+                  {myStars.map((star) => (
+                    <div key={star.repo.id} className="flex justify-between items-center p-3 hover:bg-github-dimmed/50 transition-colors">
+                      <a 
+                        href={star.repo.html_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="link truncate mr-3 flex-1"
+                        title={star.repo.full_name}
+                      >
+                        {star.repo.full_name}
+                      </a>
+                      <span className="text-xs text-github-muted whitespace-nowrap flex items-center gap-1">
+                        <Star className="w-3 h-3" /> {star.repo.stargazers_count.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Target User Network Results */}
+      {targetUsername && !isNetworkLoading && activeTab === 'overview' && (
         <div className="card">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
             <div className="flex items-center gap-4">
               <h2 className="text-2xl font-bold">{targetUsername}'s Network</h2>
-              <div className="flex bg-github-dimmed rounded-lg p-1">
+              <div className="flex bg-github-dark rounded-lg p-1">
                 <button
                   onClick={() => {
                     setTargetTab('following');
                     setSelectedUsers(new Set());
                   }}
-                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                     targetTab === 'following'
                       ? 'bg-github-accent text-white'
                       : 'text-github-muted hover:text-white'
@@ -395,7 +519,7 @@ export default function NetworkPage() {
                     setTargetTab('followers');
                     setSelectedUsers(new Set());
                   }}
-                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
                     targetTab === 'followers'
                       ? 'bg-github-accent text-white'
                       : 'text-github-muted hover:text-white'
@@ -409,7 +533,7 @@ export default function NetworkPage() {
             <div className="flex gap-2">
               <button
                 onClick={handleSelectAllUsers}
-                className="btn-secondary"
+                className="btn-secondary text-sm"
                 disabled={(targetTab === 'following' ? targetUserFollowing : targetUserFollowers).length === 0}
               >
                 {selectedUsers.size === (targetTab === 'following' ? targetUserFollowing : targetUserFollowers).filter(u => !myFollowingLogins.has(u.login)).length && selectedUsers.size > 0
@@ -418,80 +542,81 @@ export default function NetworkPage() {
               </button>
               <button
                 onClick={handleCopyNetwork}
-                disabled={selectedUsers.size === 0 || networkCopyProgress.inProgress || (targetTab === 'following' ? targetUserFollowing : targetUserFollowers).length === 0}
-                className="btn-primary"
+                disabled={selectedUsers.size === 0 || networkCopyProgress.inProgress}
+                className="btn-primary text-sm"
               >
-                <UserPlus className="w-4 h-4 inline mr-2" />
-                Follow {selectedUsers.size} Selected
+                <UserPlus className="w-4 h-4 inline mr-1" />
+                Follow ({selectedUsers.size})
               </button>
-              <button onClick={clearNetworkTarget} className="btn-secondary">
+              <button onClick={clearNetworkTarget} className="btn-secondary text-sm">
                 Clear
               </button>
             </div>
           </div>
 
           {(targetTab === 'following' ? targetUserFollowing : targetUserFollowers).length === 0 ? (
-            <div className="text-center py-8 text-github-muted">
+            <div className="text-center py-12 text-github-muted border border-github-border rounded-lg bg-github-dark/30">
+              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p className="text-lg">This user {targetTab === 'following' ? 'is not following anyone' : 'has no followers'}.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto">
-            {(targetTab === 'following' ? targetUserFollowing : targetUserFollowers).map((user) => {
-              const isAlreadyFollowing = myFollowingLogins.has(user.login);
-              const isSelected = selectedUsers.has(user.login);
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-1">
+              {(targetTab === 'following' ? targetUserFollowing : targetUserFollowers).map((user) => {
+                const isAlreadyFollowing = myFollowingLogins.has(user.login);
+                const isSelected = selectedUsers.has(user.login);
 
-              return (
-                <div
-                  key={user.id}
-                  onClick={() => !isAlreadyFollowing && handleSelectUser(user.login)}
-                  className={`p-4 border border-github-border rounded-lg cursor-pointer transition-colors flex items-center gap-3 ${
-                    isSelected
-                      ? 'bg-github-accent/10 border-github-accent'
-                      : isAlreadyFollowing
-                      ? 'bg-github-dimmed/50 cursor-not-allowed opacity-50'
-                      : 'hover:bg-github-dimmed'
-                  }`}
-                >
-                  <img src={user.avatar_url} alt={user.login} className="w-10 h-10 rounded-full" />
-                  <div className="flex-1 min-w-0">
-                    <a
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => !isAlreadyFollowing && handleSelectUser(user.login)}
+                    className={`p-3 border rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
+                      isSelected
+                        ? 'bg-github-accent/10 border-github-accent'
+                        : isAlreadyFollowing
+                        ? 'bg-github-dimmed/30 border-github-border cursor-not-allowed opacity-60'
+                        : 'border-github-border hover:bg-github-dimmed/50 hover:border-github-muted'
+                    }`}
+                  >
+                    <img src={user.avatar_url} alt={user.login} className="w-10 h-10 rounded-full" />
+                    <div className="flex-1 min-w-0">
+                      <a
                         href={user.html_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="link font-semibold truncate block"
+                        className="link font-semibold truncate block text-sm"
                         onClick={(e) => e.stopPropagation()}
-                    >
+                      >
                         {user.login}
-                    </a>
-                  </div>
-                  <div>
-                    {isAlreadyFollowing ? (
+                      </a>
+                    </div>
+                    <div>
+                      {isAlreadyFollowing ? (
                         <Check className="w-5 h-5 text-github-success" />
-                    ) : isSelected ? (
+                      ) : isSelected ? (
                         <Check className="w-5 h-5 text-github-accent" />
-                    ) : (
+                      ) : (
                         <div className="w-5 h-5 border-2 border-github-border rounded-full" />
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
 
-      {/* Target User Stars */}
+      {/* Target User Stars Results */}
       {starsTargetUsername && !isStarsLoading && activeTab === 'stars' && (
         <div className="card">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
             <h2 className="text-2xl font-bold">
               {starsTargetUsername}'s Stars ({targetUserStars.length})
             </h2>
             <div className="flex gap-2">
               <button
                 onClick={handleSelectAllRepos}
-                className="btn-secondary"
+                className="btn-secondary text-sm"
                 disabled={targetUserStars.length === 0}
               >
                 {selectedRepos.size === targetUserStars.filter(s => !myStarredRepoNames.has(s.repo.full_name)).length && selectedRepos.size > 0
@@ -500,81 +625,84 @@ export default function NetworkPage() {
               </button>
               <button
                 onClick={handleCopyStars}
-                disabled={selectedRepos.size === 0 || starsCopyProgress.inProgress || targetUserStars.length === 0}
-                className="btn-primary"
+                disabled={selectedRepos.size === 0 || starsCopyProgress.inProgress}
+                className="btn-primary text-sm"
               >
-                <Star className="w-4 h-4 inline mr-2" />
-                Copy {selectedRepos.size} Selected
+                <Star className="w-4 h-4 inline mr-1" />
+                Copy ({selectedRepos.size})
               </button>
-              <button onClick={clearStarsTarget} className="btn-secondary">
+              <button onClick={clearStarsTarget} className="btn-secondary text-sm">
                 Clear
               </button>
             </div>
           </div>
 
           {targetUserStars.length === 0 ? (
-            <div className="text-center py-8 text-github-muted">
+            <div className="text-center py-12 text-github-muted border border-github-border rounded-lg bg-github-dark/30">
+              <Star className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p className="text-lg">This user hasn't starred any repositories yet.</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
-            {targetUserStars.map((star) => {
-              const repo = star.repo;
-              const isAlreadyStarred = myStarredRepoNames.has(repo.full_name);
-              const isSelected = selectedRepos.has(repo.full_name);
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {targetUserStars.map((star) => {
+                const repo = star.repo;
+                const isAlreadyStarred = myStarredRepoNames.has(repo.full_name);
+                const isSelected = selectedRepos.has(repo.full_name);
 
-              return (
-                <div
-                  key={repo.id}
-                  onClick={() => !isAlreadyStarred && handleSelectRepo(repo.full_name)}
-                  className={`p-4 border border-github-border rounded-lg cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'bg-github-accent/10 border-github-accent'
-                      : isAlreadyStarred
-                      ? 'bg-github-dimmed/50 cursor-not-allowed opacity-50'
-                      : 'hover:bg-github-dimmed'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={repo.html_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="link text-lg font-semibold"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {repo.full_name}
-                        </a>
-                        {isAlreadyStarred && (
-                          <span className="text-xs bg-github-success/20 text-github-success px-2 py-1 rounded">
-                            Already Starred
+                return (
+                  <div
+                    key={repo.id}
+                    onClick={() => !isAlreadyStarred && handleSelectRepo(repo.full_name)}
+                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-github-accent/10 border-github-accent'
+                        : isAlreadyStarred
+                        ? 'bg-github-dimmed/30 border-github-border cursor-not-allowed opacity-60'
+                        : 'border-github-border hover:bg-github-dimmed/50 hover:border-github-muted'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <a
+                            href={repo.html_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="link font-semibold"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {repo.full_name}
+                          </a>
+                          {isAlreadyStarred && (
+                            <span className="text-xs bg-github-success/20 text-github-success px-2 py-0.5 rounded">
+                              Already Starred
+                            </span>
+                          )}
+                        </div>
+                        {repo.description && (
+                          <p className="text-github-muted text-sm mt-1 line-clamp-2">{repo.description}</p>
+                        )}
+                        <div className="flex gap-4 mt-2 text-sm text-github-muted">
+                          {repo.language && <span className="bg-github-dimmed px-2 py-0.5 rounded">{repo.language}</span>}
+                          <span className="flex items-center gap-1">
+                            <Star className="w-3 h-3" /> {repo.stargazers_count.toLocaleString()}
                           </span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {isAlreadyStarred ? (
+                          <Check className="w-6 h-6 text-github-success" />
+                        ) : isSelected ? (
+                          <Check className="w-6 h-6 text-github-accent" />
+                        ) : (
+                          <div className="w-6 h-6 border-2 border-github-border rounded" />
                         )}
                       </div>
-                      {repo.description && (
-                        <p className="text-github-muted text-sm mt-1">{repo.description}</p>
-                      )}
-                      <div className="flex gap-4 mt-2 text-sm text-github-muted">
-                        {repo.language && <span>{repo.language}</span>}
-                        <span>⭐ {repo.stargazers_count}</span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      {isAlreadyStarred ? (
-                        <Check className="w-6 h-6 text-github-success" />
-                      ) : isSelected ? (
-                        <Check className="w-6 h-6 text-github-accent" />
-                      ) : (
-                        <div className="w-6 h-6 border-2 border-github-border rounded" />
-                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

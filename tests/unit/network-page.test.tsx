@@ -152,7 +152,7 @@ describe('NetworkPage', () => {
 
     render(<NetworkPage />);
 
-    const input = screen.getByPlaceholderText('Enter GitHub username to see who they follow');
+    const input = screen.getByPlaceholderText('Enter GitHub username...');
     fireEvent.change(input, { target: { value: 'targetuser' } });
     
     // Try pressing Enter
@@ -202,7 +202,7 @@ describe('NetworkPage', () => {
     // Click the avatar image to avoid the link's stopPropagation
     fireEvent.click(screen.getByAltText('target-following'));
 
-    const copyButton = screen.getByRole('button', { name: /Follow 1 Selected/i });
+    const copyButton = screen.getByRole('button', { name: /Follow \(1\)/i });
     fireEvent.click(copyButton);
 
     await waitFor(() => {
@@ -240,7 +240,7 @@ describe('NetworkPage', () => {
     // Switch to Stars tab
     fireEvent.click(screen.getByText(/My Stars/));
 
-    const input = screen.getByPlaceholderText('Enter GitHub username to see their stars');
+    const input = screen.getByPlaceholderText('Enter GitHub username...');
     fireEvent.change(input, { target: { value: 'targetuser' } });
     
     // Trigger search with Enter key
@@ -291,7 +291,7 @@ describe('NetworkPage', () => {
     fireEvent.click(screen.getByText('An awesome repo'));
 
     // Click Copy button
-    const copyButton = screen.getByRole('button', { name: /Copy 1 Selected/i });
+    const copyButton = screen.getByRole('button', { name: /Copy \(1\)/i });
     fireEvent.click(copyButton);
 
     await waitFor(() => {
