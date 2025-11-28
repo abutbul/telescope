@@ -10,6 +10,7 @@ export default function StarsPage() {
     targetUserStars,
     targetUsername,
     isLoading,
+    isLoadingMyStars,
     copyProgress,
     fetchMyStars,
     fetchUserStars,
@@ -68,11 +69,11 @@ export default function StarsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
       <div className="card">
         <h1 className="text-3xl font-bold mb-4">Star Management</h1>
         <p className="text-github-muted mb-6">
-          You have <span className="text-github-accent font-bold">{myStars.length}</span> starred
+          You have <span className="text-github-accent font-bold">{isLoadingMyStars ? '...' : myStars.length}</span> starred
           repositories
         </p>
 
@@ -122,6 +123,22 @@ export default function StarsPage() {
           </button>
         </div>
       </div>
+
+      {/* Loading My Stars Overlay */}
+      {isLoadingMyStars && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ top: '200px' }}>
+          {/* Blackout overlay */}
+          <div className="absolute inset-0 bg-github-dark/80 backdrop-blur-sm" />
+          {/* Floating message */}
+          <div className="relative z-10 flex flex-col items-center justify-center p-8 rounded-xl bg-github-canvas border border-github-border shadow-2xl">
+            <Star className="w-16 h-16 text-github-accent animate-pulse mb-4" />
+            <p className="text-xl font-semibold text-github-fg mb-2">Populating your stars...</p>
+            <p className="text-github-muted text-center max-w-md">
+              Fetching your starred repositories. This may take a moment if you have many stars.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && (

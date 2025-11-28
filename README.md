@@ -4,7 +4,7 @@
 
 Telescope is a client-side web application that provides analytics, automation, and social features for GitHub developers. Hosted entirely on GitHub Pages with no backend required.
 
-[![Deploy](https://github.com/yourusername/telescope/actions/workflows/deploy.yml/badge.svg)](https://github.com/yourusername/telescope/actions/workflows/deploy.yml)
+[![Deploy](https://github.com/abutbul/telescope/actions/workflows/deploy.yml/badge.svg)](https://github.com/abutbul/telescope/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## ✨ Features
@@ -38,7 +38,7 @@ Visit [https://abutbul.github.io/telescope](https://abutbul.github.io/telescope)
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/telescope.git
+git clone https://github.com/abutbul/telescope.git
 cd telescope
 
 # Install dependencies
@@ -146,7 +146,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Documentation](./DESIGN.md) - Detailed design and architecture
 - [GitHub API](https://docs.github.com/en/rest)
-- [Report Issues](https://github.com/yourusername/telescope/issues)
+- [Report Issues](https://github.com/abutbul/telescope/issues)
 
 ---
 

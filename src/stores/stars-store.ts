@@ -8,6 +8,7 @@ interface StarsState {
   targetUserStars: StarredRepo[];
   targetUsername: string | null;
   isLoading: boolean;
+  isLoadingMyStars: boolean;
   error: string | null;
   copyProgress: {
     total: number;
@@ -31,6 +32,7 @@ export const useStarsStore = create<StarsState & StarsActions>((set) => ({
   targetUserStars: [],
   targetUsername: null,
   isLoading: false,
+  isLoadingMyStars: false,
   error: null,
   copyProgress: {
     total: 0,
@@ -40,7 +42,7 @@ export const useStarsStore = create<StarsState & StarsActions>((set) => ({
   },
 
   fetchMyStars: async (token: string, forceRefresh = false) => {
-    set({ isLoading: true, error: null });
+    set({ isLoadingMyStars: true, error: null });
     try {
       const api = new GitHubAPI(token);
       const stars = await CacheManager.getOrFetch(
@@ -49,11 +51,11 @@ export const useStarsStore = create<StarsState & StarsActions>((set) => ({
         () => api.getStarredRepos(),
         { forceRefresh }
       );
-      set({ myStars: stars, isLoading: false });
+      set({ myStars: stars, isLoadingMyStars: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch stars',
-        isLoading: false,
+        isLoadingMyStars: false,
       });
     }
   },
