@@ -20,11 +20,8 @@ export default function Layout() {
                 <Link to="/dashboard" className="text-github-text hover:text-white">
                   Dashboard
                 </Link>
-                <Link to="/stars" className="text-github-text hover:text-white">
-                  Stars
-                </Link>
                 <Link to="/network" className="text-github-text hover:text-white">
-                  Network
+                  Network Manager
                 </Link>
                 <Link to="/fork" className="text-github-text hover:text-white">
                   Fork Management

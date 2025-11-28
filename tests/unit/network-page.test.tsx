@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import NetworkPage from '../../src/pages/NetworkPage';
 import { useAuthStore } from '../../src/stores/auth-store';
 import { useNetworkStore } from '../../src/stores/network-store';
+import { useStarsStore } from '../../src/stores/stars-store';
 import { resetAuthStore } from '../utils/store-helpers';
 import type { GitHubUser } from '../../src/lib/github/types';
 
@@ -24,19 +25,24 @@ vi.mock('../../src/stores/network-store', async () => {
   };
 });
 
+vi.mock('../../src/stores/stars-store', async () => {
+  const actual = await vi.importActual('../../src/stores/stars-store');
+  return {
+    ...actual,
+    useStarsStore: actual.useStarsStore,
+  };
+});
+
 const mockUser: GitHubUser = {
   id: 1,
   login: 'testuser',
   avatar_url: 'https://example.com/avatar.png',
   html_url: 'https://github.com/testuser',
-  type: 'User',
-  site_admin: false,
   name: 'Test User',
   company: null,
   blog: null,
   location: null,
   email: null,
-  hireable: null,
   bio: null,
   public_repos: 0,
   public_gists: 0,
@@ -66,6 +72,20 @@ describe('NetworkPage', () => {
         inProgress: false,
       },
     });
+
+    useStarsStore.setState({
+      myStars: [],
+      targetUserStars: [],
+      targetUsername: null,
+      isLoading: false,
+      error: null,
+      copyProgress: {
+        total: 0,
+        completed: 0,
+        failed: 0,
+        inProgress: false,
+      },
+    });
   });
 
   it('renders network page and fetches my network', () => {
@@ -74,7 +94,7 @@ describe('NetworkPage', () => {
 
     render(<NetworkPage />);
 
-    expect(screen.getByText(/Network Management/i)).toBeInTheDocument();
+    expect(screen.getByText(/Network Manager/i)).toBeInTheDocument();
     expect(fetchMyNetwork).toHaveBeenCalledWith('test-token');
   });
 
@@ -132,13 +152,15 @@ describe('NetworkPage', () => {
 
     render(<NetworkPage />);
 
-    const input = screen.getByPlaceholderText(/Enter GitHub username/i);
+    const input = screen.getByPlaceholderText('Enter GitHub username to see who they follow');
     fireEvent.change(input, { target: { value: 'targetuser' } });
     
-    const searchButton = screen.getByRole('button', { name: /Search/i });
-    fireEvent.click(searchButton);
+    // Try pressing Enter
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', charCode: 13 });
 
-    expect(fetchUserNetwork).toHaveBeenCalledWith('test-token', 'targetuser');
+    await waitFor(() => {
+      expect(fetchUserNetwork).toHaveBeenCalledWith('test-token', 'targetuser');
+    });
   });
 
   it('displays target user network', () => {
@@ -153,9 +175,14 @@ describe('NetworkPage', () => {
 
     render(<NetworkPage />);
 
-    expect(screen.getByText(/targetuser follows/i)).toBeInTheDocument();
+    expect(screen.getByText(/targetuser's Network/i)).toBeInTheDocument();
     expect(screen.getByText('target-following')).toBeInTheDocument();
-    // Note: target-follower is not displayed in the list, only target-following (users the target follows)
+    
+    // Switch to followers tab
+    const followersTab = screen.getByText(/Followers \(1\)/);
+    fireEvent.click(followersTab);
+    
+    expect(screen.getByText('target-follower')).toBeInTheDocument();
   });
 
   it('allows copying following from target user', async () => {
@@ -172,8 +199,8 @@ describe('NetworkPage', () => {
     render(<NetworkPage />);
 
     // Select the user to copy
-    const userCard = screen.getByText('target-following').closest('div');
-    fireEvent.click(userCard!);
+    // Click the avatar image to avoid the link's stopPropagation
+    fireEvent.click(screen.getByAltText('target-following'));
 
     const copyButton = screen.getByRole('button', { name: /Follow 1 Selected/i });
     fireEvent.click(copyButton);
@@ -196,5 +223,79 @@ describe('NetworkPage', () => {
     fireEvent.click(clearButton);
 
     expect(clearTargetUser).toHaveBeenCalled();
+  });
+
+  it('searches for user stars and copies them', async () => {
+    const fetchUserStars = vi.fn();
+    const copyStarsFromUser = vi.fn();
+    
+    useStarsStore.setState({ 
+      fetchUserStars,
+      copyStarsFromUser,
+      targetUserStars: [],
+    });
+
+    render(<NetworkPage />);
+
+    // Switch to Stars tab
+    fireEvent.click(screen.getByText(/My Stars/));
+
+    const input = screen.getByPlaceholderText('Enter GitHub username to see their stars');
+    fireEvent.change(input, { target: { value: 'targetuser' } });
+    
+    // Trigger search with Enter key
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', charCode: 13 });
+
+    await waitFor(() => {
+      expect(fetchUserStars).toHaveBeenCalledWith('test-token', 'targetuser');
+    });
+
+    // Simulate stars loaded
+    const targetStars = [
+      { 
+        starred_at: '2023-01-01', 
+        repo: { 
+          id: 101, 
+          name: 'awesome-repo', 
+          full_name: 'targetuser/awesome-repo',
+          description: 'An awesome repo',
+          private: false,
+          html_url: 'https://github.com/targetuser/awesome-repo',
+          fork: false,
+          created_at: '2023-01-01',
+          updated_at: '2023-01-01',
+          pushed_at: '2023-01-01',
+          stargazers_count: 100,
+          watchers_count: 100,
+          language: 'TypeScript',
+          forks_count: 10,
+          open_issues_count: 0,
+          topics: []
+        } 
+      }
+    ];
+
+    useStarsStore.setState({
+      targetUsername: 'targetuser',
+      targetUserStars: targetStars,
+    });
+
+    // Re-render to show results (state change should trigger re-render, but in test we might need to wait or force update if not automatic)
+    // But since we are modifying the store which the component subscribes to, it should update.
+    
+    await waitFor(() => {
+      expect(screen.getByText('targetuser/awesome-repo')).toBeInTheDocument();
+    });
+
+    // Select the repo by clicking the description (clicking the link stops propagation)
+    fireEvent.click(screen.getByText('An awesome repo'));
+
+    // Click Copy button
+    const copyButton = screen.getByRole('button', { name: /Copy 1 Selected/i });
+    fireEvent.click(copyButton);
+
+    await waitFor(() => {
+      expect(copyStarsFromUser).toHaveBeenCalledWith('test-token', [targetStars[0].repo]);
+    });
   });
 });
