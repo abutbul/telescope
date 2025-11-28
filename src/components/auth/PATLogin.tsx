@@ -104,6 +104,7 @@ export default function PATLogin({ onClose }: PATLoginProps) {
                   className="input pr-20 font-mono text-sm"
                   disabled={isLoading}
                   autoFocus
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"

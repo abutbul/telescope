@@ -21,7 +21,7 @@ function isLocalStorageAvailable(): boolean {
 export class BrowserStorage {
   private static readonly PREFIX = 'telescope_';
   private static readonly MAX_RETRIES = 2;
-  private static readonly MAX_ITEM_SIZE = 500 * 1024; // 500KB max per item to prevent storage bloat
+  private static readonly MAX_ITEM_SIZE = 100 * 1024; // 100KB max per item to prevent storage bloat
   private static storageAvailable: boolean | null = null;
 
   // Check storage availability (cached)
@@ -69,8 +69,8 @@ export class BrowserStorage {
       // Sort by timestamp (oldest first)
       entries.sort((a, b) => a.timestamp - b.timestamp);
 
-      // Remove oldest 50% of entries
-      const toRemove = Math.max(1, Math.ceil(entries.length / 2));
+      // Remove oldest 80% of entries
+      const toRemove = Math.max(1, Math.ceil(entries.length * 0.8));
       for (let i = 0; i < toRemove; i++) {
         localStorage.removeItem(entries[i].key);
       }
@@ -120,8 +120,11 @@ export class BrowserStorage {
           if (attempt === 0) {
             // First attempt: clear expired entries
             this.clearOldEntries();
+          } else if (attempt === this.MAX_RETRIES) {
+            // Last attempt: clear everything to make space
+            this.clear();
           } else {
-            // Subsequent attempts: clear more aggressively
+            // Intermediate attempts: clear more aggressively
             this.clearEntriesAggressively();
           }
         } else {
