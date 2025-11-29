@@ -11,6 +11,7 @@ export const developerCardTemplate: ProfileTemplate = {
   difficulty: 'beginner',
   lastUpdated: '2025-11-22',
   tags: ['badges', 'stats', 'clean', 'popular'],
+  mode: 'readme',
   
   markdown: `<div align="center">
   <img src="{{headerImage}}" alt="Header" width="100%"/>

@@ -1,36 +1,23 @@
 import { useState } from 'react';
-import { Search, Filter, Star, Github, Loader2 } from 'lucide-react';
+import { Search, Filter, Star, Github, Loader2, Globe, FileText } from 'lucide-react';
 import { useProfileBuilderStore } from '../../stores/profile-builder-store';
-import { ProfileTemplate } from '../../lib/profile-builder/types';
+import { AnyTemplate, isPortfolioTemplate } from '../../lib/profile-builder/types';
 
 export default function TemplateGallery() {
   const {
-    templates,
     filterCategory,
     searchQuery,
+    builderMode,
     setFilterCategory,
     setSearchQuery,
     selectTemplate,
+    getFilteredTemplates,
   } = useProfileBuilderStore();
 
   const [sortBy, setSortBy] = useState<'popular' | 'recent' | 'name'>('popular');
 
-  // Filter templates
-  let filteredTemplates = templates;
-
-  if (filterCategory) {
-    filteredTemplates = filteredTemplates.filter((t) => t.category === filterCategory);
-  }
-
-  if (searchQuery) {
-    const query = searchQuery.toLowerCase();
-    filteredTemplates = filteredTemplates.filter(
-      (t) =>
-        t.name.toLowerCase().includes(query) ||
-        t.description.toLowerCase().includes(query) ||
-        t.tags.some((tag) => tag.toLowerCase().includes(query)),
-    );
-  }
+  // Get filtered templates based on current mode
+  let filteredTemplates = getFilteredTemplates();
 
   // Sort templates
   filteredTemplates = [...filteredTemplates].sort((a, b) => {
@@ -47,16 +34,31 @@ export default function TemplateGallery() {
   });
 
   const categories = [
-    { id: 'all', label: 'All Templates', count: templates.length },
-    { id: 'minimalist', label: 'Minimalist', count: templates.filter((t) => t.category === 'minimalist').length },
-    { id: 'visual', label: 'Visual', count: templates.filter((t) => t.category === 'visual').length },
-    { id: 'interactive', label: 'Interactive', count: templates.filter((t) => t.category === 'interactive').length },
-    { id: 'professional', label: 'Professional', count: templates.filter((t) => t.category === 'professional').length },
-    { id: 'creative', label: 'Creative', count: templates.filter((t) => t.category === 'creative').length },
-  ];
+    { id: 'all', label: 'All Templates', count: filteredTemplates.length },
+    { id: 'minimalist', label: 'Minimalist', count: filteredTemplates.filter((t) => t.category === 'minimalist').length },
+    { id: 'visual', label: 'Visual', count: filteredTemplates.filter((t) => t.category === 'visual').length },
+    { id: 'interactive', label: 'Interactive', count: filteredTemplates.filter((t) => t.category === 'interactive').length },
+    { id: 'professional', label: 'Professional', count: filteredTemplates.filter((t) => t.category === 'professional').length },
+    { id: 'creative', label: 'Creative', count: filteredTemplates.filter((t) => t.category === 'creative').length },
+  ].filter(c => c.id === 'all' || c.count > 0);
 
   return (
     <div>
+      {/* Mode indicator */}
+      <div className="mb-4 flex items-center gap-2 text-sm">
+        {builderMode === 'readme' ? (
+          <>
+            <FileText className="h-4 w-4 text-blue-400" />
+            <span className="text-gray-400">Showing README templates</span>
+          </>
+        ) : (
+          <>
+            <Globe className="h-4 w-4 text-purple-400" />
+            <span className="text-gray-400">Showing Portfolio templates</span>
+          </>
+        )}
+      </div>
+
       {/* Filters */}
       <div className="mb-6 space-y-4">
         {/* Search */}
@@ -82,7 +84,7 @@ export default function TemplateGallery() {
                   onClick={() => setFilterCategory(category.id === 'all' ? null : category.id)}
                   className={`px-4 py-2 rounded-lg text-sm transition-colors ${
                     (category.id === 'all' && !filterCategory) || filterCategory === category.id
-                      ? 'bg-blue-600 text-white'
+                      ? builderMode === 'portfolio' ? 'bg-purple-600 text-white' : 'bg-blue-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
                   }`}
                 >
@@ -111,8 +113,8 @@ export default function TemplateGallery() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Current Profile Card - Only show when no filters are active or category is 'professional' */}
-          {(!filterCategory || filterCategory === 'professional') && !searchQuery && (
+          {/* Current Profile Card - Only show for README mode when no filters are active */}
+          {builderMode === 'readme' && (!filterCategory || filterCategory === 'professional') && !searchQuery && (
             <CurrentProfileCard />
           )}
           {filteredTemplates.map((template) => (
@@ -188,9 +190,11 @@ function TemplateCard({
   template,
   onSelect,
 }: {
-  template: ProfileTemplate;
-  onSelect: (template: ProfileTemplate) => void;
+  template: AnyTemplate;
+  onSelect: (template: AnyTemplate) => void;
 }) {
+  const isPortfolio = isPortfolioTemplate(template);
+  
   const difficultyColors = {
     beginner: 'bg-green-900/30 text-green-400 border-green-800',
     intermediate: 'bg-yellow-900/30 text-yellow-400 border-yellow-800',
@@ -225,6 +229,20 @@ function TemplateCard({
            <span className="text-2xl font-bold text-white/20 uppercase tracking-wider">
              {template.category}
            </span>
+        </div>
+        {/* Portfolio/README indicator */}
+        <div className="absolute top-2 right-2">
+          {isPortfolio ? (
+            <span className="px-2 py-1 rounded text-xs bg-purple-600/80 text-white flex items-center gap-1">
+              <Globe className="h-3 w-3" />
+              Website
+            </span>
+          ) : (
+            <span className="px-2 py-1 rounded text-xs bg-blue-600/80 text-white flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              README
+            </span>
+          )}
         </div>
       </div>
 
@@ -268,7 +286,9 @@ function TemplateCard({
 
         <button
           onClick={() => onSelect(template)}
-          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium mt-auto"
+          className={`w-full py-2 ${
+            isPortfolio ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'
+          } text-white rounded-lg transition-colors font-medium mt-auto`}
         >
           Use Template
         </button>

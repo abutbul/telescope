@@ -1,23 +1,54 @@
-import { ProfileTemplate } from '../types';
+import { ProfileTemplate, PortfolioTemplate, AnyTemplate, isPortfolioTemplate, isReadmeTemplate } from '../types';
 import { developerCardTemplate } from './developer-card';
 import { statsDashboardTemplate } from './stats-dashboard';
 import { minimalistTemplate } from './minimalist';
+import { modernPortfolioTemplate } from './portfolio-modern';
+import { minimalPortfolioTemplate, creativePortfolioTemplate } from './portfolio-variants';
 
-export const allTemplates: ProfileTemplate[] = [
+// README profile templates
+export const readmeTemplates: ProfileTemplate[] = [
   developerCardTemplate,
   statsDashboardTemplate,
   minimalistTemplate,
 ];
 
-export function getTemplateById(id: string): ProfileTemplate | undefined {
+// Portfolio website templates
+export const portfolioTemplates: PortfolioTemplate[] = [
+  modernPortfolioTemplate,
+  minimalPortfolioTemplate,
+  creativePortfolioTemplate,
+];
+
+// All templates combined
+export const allTemplates: AnyTemplate[] = [
+  ...readmeTemplates,
+  ...portfolioTemplates,
+];
+
+export function getTemplateById(id: string): AnyTemplate | undefined {
   return allTemplates.find((t) => t.id === id);
 }
 
-export function getTemplatesByCategory(category: string): ProfileTemplate[] {
+export function getReadmeTemplateById(id: string): ProfileTemplate | undefined {
+  return readmeTemplates.find((t) => t.id === id);
+}
+
+export function getPortfolioTemplateById(id: string): PortfolioTemplate | undefined {
+  return portfolioTemplates.find((t) => t.id === id);
+}
+
+export function getTemplatesByCategory(category: string): AnyTemplate[] {
   return allTemplates.filter((t) => t.category === category);
 }
 
-export function searchTemplates(query: string): ProfileTemplate[] {
+export function getTemplatesByMode(mode: 'readme' | 'portfolio'): AnyTemplate[] {
+  if (mode === 'readme') {
+    return readmeTemplates;
+  }
+  return portfolioTemplates;
+}
+
+export function searchTemplates(query: string): AnyTemplate[] {
   const lowerQuery = query.toLowerCase();
   return allTemplates.filter(
     (t) =>
@@ -26,3 +57,6 @@ export function searchTemplates(query: string): ProfileTemplate[] {
       t.tags.some((tag: string) => tag.toLowerCase().includes(lowerQuery)),
   );
 }
+
+// Re-export type guards
+export { isPortfolioTemplate, isReadmeTemplate };

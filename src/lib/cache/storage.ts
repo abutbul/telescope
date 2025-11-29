@@ -269,4 +269,12 @@ export class BrowserStorage {
   static getCachedFollowing(username: string): unknown | null {
     return this.get(`following_${username}`);
   }
+
+  static cacheCommitStats(username: string, data: unknown, ttl?: number): void {
+    this.set(`commitStats_${username}`, data, ttl);
+  }
+
+  static getCachedCommitStats(username: string): unknown | null {
+    return this.get(`commitStats_${username}`);
+  }
 }

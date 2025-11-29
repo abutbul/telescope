@@ -36,6 +36,10 @@ export interface Repository {
   forks_count: number;
   open_issues_count: number;
   topics: string[];
+  owner?: {
+    login: string;
+    avatar_url: string;
+  };
 }
 
 export interface StarredRepo {
@@ -69,4 +73,58 @@ export interface RateLimitStatus {
   remaining: number;
   reset: Date;
   used: number;
+}
+
+export interface GitHubGist {
+  id: string;
+  html_url: string;
+  description: string | null;
+  public: boolean;
+  created_at: string;
+  updated_at: string;
+  files: Record<string, {
+    filename: string;
+    language: string | null;
+    size: number;
+  }>;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+}
+
+export interface GitHubEvent {
+  id: string;
+  type: string;
+  actor: {
+    login: string;
+    avatar_url: string;
+  };
+  repo: {
+    name: string;
+  };
+  payload: {
+    commits?: Array<{
+      sha: string;
+      message: string;
+    }>;
+    size?: number;
+    action?: string;
+  };
+  created_at: string;
+}
+
+export interface CommitStats {
+  totalCommits: number;
+  commitsByDayOfWeek: Record<string, number>;
+  commitsByHour: Record<number, number>;
+  mostActiveDay: string;
+  mostActiveHour: number;
+  streakDays: number;
+  longestStreak: number;
+  commitDates: string[];
+  averageCommitsPerDay: number;
+  weekendWarrior: boolean; // More commits on weekends
+  nightOwl: boolean; // Most commits after 10pm
+  earlyBird: boolean; // Most commits before 9am
 }

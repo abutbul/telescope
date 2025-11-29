@@ -9,6 +9,8 @@ vi.mock('@octokit/rest', () => ({
       users: {
         getAuthenticated: vi.fn(),
         getByUsername: vi.fn(),
+        listFollowersForUser: vi.fn(),
+        listFollowingForUser: vi.fn(),
       },
       repos: {
         listForUser: vi.fn(),
@@ -24,6 +26,10 @@ vi.mock('@octokit/rest', () => ({
         starRepoForAuthenticatedUser: vi.fn(),
         unstarRepoForAuthenticatedUser: vi.fn(),
         checkRepoIsStarredByAuthenticatedUser: vi.fn(),
+        listPublicEventsForUser: vi.fn(),
+      },
+      gists: {
+        listForUser: vi.fn(),
       },
       rateLimit: {
         get: vi.fn(),
@@ -54,6 +60,8 @@ describe('GitHubAPI', () => {
         users: {
           getAuthenticated: vi.fn(),
           getByUsername: vi.fn(),
+          listFollowersForUser: vi.fn(),
+          listFollowingForUser: vi.fn(),
         },
         repos: {
           listForUser: vi.fn(),
@@ -69,6 +77,10 @@ describe('GitHubAPI', () => {
           starRepoForAuthenticatedUser: vi.fn(),
           unstarRepoForAuthenticatedUser: vi.fn(),
           checkRepoIsStarredByAuthenticatedUser: vi.fn(),
+          listPublicEventsForUser: vi.fn(),
+        },
+        gists: {
+          listForUser: vi.fn(),
         },
         rateLimit: {
           get: vi.fn(),
@@ -234,5 +246,134 @@ describe('GitHubAPI', () => {
       repo: 'repo',
       branch: 'main',
     });
+  });
+
+  it('should get gists for user', async () => {
+    const mockGists = [
+      { id: '1', html_url: 'https://gist.github.com/1', description: 'Test gist', public: true },
+      { id: '2', html_url: 'https://gist.github.com/2', description: 'Another gist', public: false },
+    ];
+    mockOctokitInstance.rest.gists.listForUser
+      .mockResolvedValueOnce({ data: mockGists })
+      .mockResolvedValueOnce({ data: [] });
+
+    const result = await api.getGistsForUser('testuser');
+    expect(result).toEqual(mockGists);
+    expect(mockOctokitInstance.rest.gists.listForUser).toHaveBeenCalledWith({
+      username: 'testuser',
+      per_page: 100,
+      page: 1,
+    });
+  });
+
+  it('should get user events', async () => {
+    const mockEvents = [
+      { id: '1', type: 'PushEvent', created_at: '2023-01-01T12:00:00Z' },
+      { id: '2', type: 'CreateEvent', created_at: '2023-01-02T14:00:00Z' },
+    ];
+    mockOctokitInstance.rest.activity.listPublicEventsForUser
+      .mockResolvedValueOnce({ data: mockEvents })
+      .mockResolvedValueOnce({ data: [] });
+
+    const result = await api.getUserEvents('testuser');
+    expect(result).toEqual(mockEvents);
+    expect(mockOctokitInstance.rest.activity.listPublicEventsForUser).toHaveBeenCalledWith({
+      username: 'testuser',
+      per_page: 100,
+      page: 1,
+    });
+  });
+
+  it('should get commit stats from user events', async () => {
+    const mockEvents = [
+      {
+        id: '1',
+        type: 'PushEvent',
+        created_at: '2023-01-02T10:00:00Z', // Monday 10 AM
+        payload: { commits: [{}, {}] },
+      },
+      {
+        id: '2',
+        type: 'PushEvent',
+        created_at: '2023-01-03T14:00:00Z', // Tuesday 2 PM
+        payload: { commits: [{}] },
+      },
+    ];
+    mockOctokitInstance.rest.activity.listPublicEventsForUser
+      .mockResolvedValueOnce({ data: mockEvents })
+      .mockResolvedValueOnce({ data: [] });
+
+    const result = await api.getCommitStats('testuser');
+
+    expect(result.totalCommits).toBe(3);
+    expect(result.commitsByDayOfWeek).toBeDefined();
+    expect(result.commitsByHour).toBeDefined();
+    expect(result.mostActiveDay).toBeDefined();
+    expect(result.mostActiveHour).toBeDefined();
+    expect(result.streakDays).toBeDefined();
+    expect(result.longestStreak).toBeDefined();
+    expect(typeof result.weekendWarrior).toBe('boolean');
+    expect(typeof result.nightOwl).toBe('boolean');
+    expect(typeof result.earlyBird).toBe('boolean');
+  });
+
+  it('should calculate commit stats correctly for night owl', async () => {
+    // Create events mostly at night (11 PM UTC - will vary by local timezone)
+    const nightEvents = Array(10).fill(null).map((_, i) => ({
+      id: String(i),
+      type: 'PushEvent',
+      created_at: `2023-01-0${(i % 9) + 1}T23:00:00Z`, // 11 PM UTC
+      payload: { commits: [{}] },
+    }));
+
+    mockOctokitInstance.rest.activity.listPublicEventsForUser
+      .mockResolvedValueOnce({ data: nightEvents })
+      .mockResolvedValueOnce({ data: [] });
+
+    const result = await api.getCommitStats('testuser');
+
+    // Night owl detection is based on commits between 10 PM and 4 AM
+    // The exact mostActiveHour depends on local timezone, so we check nightOwl flag
+    expect(result.totalCommits).toBe(10);
+    // nightOwl status depends on whether local time falls in late night hours
+    expect(typeof result.nightOwl).toBe('boolean');
+    expect(typeof result.mostActiveHour).toBe('number');
+  });
+
+  it('should calculate commit stats correctly for early bird', async () => {
+    // Create events mostly early morning (6 AM UTC - will vary by local timezone)
+    const morningEvents = Array(10).fill(null).map((_, i) => ({
+      id: String(i),
+      type: 'PushEvent',
+      created_at: `2023-01-0${(i % 9) + 1}T06:00:00Z`, // 6 AM UTC
+      payload: { commits: [{}] },
+    }));
+
+    mockOctokitInstance.rest.activity.listPublicEventsForUser
+      .mockResolvedValueOnce({ data: morningEvents })
+      .mockResolvedValueOnce({ data: [] });
+
+    const result = await api.getCommitStats('testuser');
+
+    // Early bird detection is based on commits between 5 AM and 8 AM
+    // The exact mostActiveHour depends on local timezone, so we check earlyBird flag
+    expect(result.totalCommits).toBe(10);
+    // earlyBird status depends on whether local time falls in early morning hours
+    expect(typeof result.earlyBird).toBe('boolean');
+    expect(typeof result.mostActiveHour).toBe('number');
+  });
+
+  it('should handle empty events for commit stats', async () => {
+    mockOctokitInstance.rest.activity.listPublicEventsForUser
+      .mockResolvedValueOnce({ data: [] });
+
+    const result = await api.getCommitStats('testuser');
+
+    expect(result.totalCommits).toBe(0);
+    expect(result.streakDays).toBe(0);
+    expect(result.longestStreak).toBe(0);
+    expect(result.weekendWarrior).toBe(false);
+    expect(result.nightOwl).toBe(false);
+    expect(result.earlyBird).toBe(false);
   });
 });

@@ -11,6 +11,7 @@ export const statsDashboardTemplate: ProfileTemplate = {
   difficulty: 'beginner',
   lastUpdated: '2025-11-22',
   tags: ['stats', 'analytics', 'data-driven', 'visual'],
+  mode: 'readme',
   
   markdown: `# {{name}} - {{tagline}}
 

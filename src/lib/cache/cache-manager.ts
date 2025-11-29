@@ -1,9 +1,10 @@
 import { BrowserStorage } from './storage';
 
-export type CacheKey = 'user' | 'repos' | 'stars' | 'stats' | 'followers' | 'following';
+export type CacheKey = 'user' | 'repos' | 'stars' | 'stats' | 'followers' | 'following' | 'commitStats';
 
 export interface CacheOptions {
   ttl?: number; // milliseconds
+  ttlMinutes?: number; // convenience property
   forceRefresh?: boolean;
 }
 
@@ -16,7 +17,8 @@ export class CacheManager {
     fetchFn: () => Promise<T>,
     options: CacheOptions = {}
   ): Promise<T> {
-    const { ttl = this.DEFAULT_TTL, forceRefresh = false } = options;
+    const { ttl = this.DEFAULT_TTL, ttlMinutes, forceRefresh = false } = options;
+    const effectiveTtl = ttlMinutes ? ttlMinutes * 60 * 1000 : ttl;
 
     if (!forceRefresh) {
       const cached = this.getCached<T>(key, username);
@@ -26,7 +28,7 @@ export class CacheManager {
     }
 
     const data = await fetchFn();
-    this.cache(key, username, data, ttl);
+    this.cache(key, username, data, effectiveTtl);
     return data;
   }
 
@@ -44,6 +46,8 @@ export class CacheManager {
         return BrowserStorage.getCachedFollowers(username) as T | null;
       case 'following':
         return BrowserStorage.getCachedFollowing(username) as T | null;
+      case 'commitStats':
+        return BrowserStorage.getCachedCommitStats(username) as T | null;
       default:
         return null;
     }
@@ -69,6 +73,9 @@ export class CacheManager {
       case 'following':
         BrowserStorage.cacheFollowing(username, data, ttl);
         break;
+      case 'commitStats':
+        BrowserStorage.cacheCommitStats(username, data, ttl);
+        break;
     }
   }
 
@@ -77,7 +84,7 @@ export class CacheManager {
   }
 
   static invalidateAll(username: string): void {
-    const keys: CacheKey[] = ['user', 'repos', 'stars', 'stats', 'followers', 'following'];
+    const keys: CacheKey[] = ['user', 'repos', 'stars', 'stats', 'followers', 'following', 'commitStats'];
     keys.forEach((key) => this.invalidate(key, username));
   }
 

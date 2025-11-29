@@ -8,6 +8,9 @@ import type {
   LanguageStats,
   AccountStats,
   RateLimitStatus,
+  GitHubGist,
+  GitHubEvent,
+  CommitStats,
 } from './types';
 import { differenceInDays } from 'date-fns';
 
@@ -258,5 +261,165 @@ export class GitHubAPI {
       repo,
       branch,
     });
+  }
+
+  // Gist operations
+  async getGistsForUser(username: string): Promise<GitHubGist[]> {
+    const gists: GitHubGist[] = [];
+    let page = 1;
+    const perPage = 100;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { data } = await this._octokit.rest.gists.listForUser({
+        username,
+        per_page: perPage,
+        page,
+      });
+
+      gists.push(...(data as unknown as GitHubGist[]));
+
+      if (data.length < perPage) break;
+      page++;
+      
+      // Limit to first 300 gists to avoid rate limits
+      if (page > 3) break;
+    }
+
+    return gists;
+  }
+
+  // Event operations (for commit history analysis)
+  async getUserEvents(username: string): Promise<GitHubEvent[]> {
+    const events: GitHubEvent[] = [];
+    let page = 1;
+    const perPage = 100;
+
+    // GitHub only provides last 300 events, paginated
+    while (page <= 3) {
+      try {
+        const { data } = await this._octokit.rest.activity.listPublicEventsForUser({
+          username,
+          per_page: perPage,
+          page,
+        });
+
+        events.push(...(data as unknown as GitHubEvent[]));
+
+        if (data.length < perPage) break;
+        page++;
+      } catch {
+        break;
+      }
+    }
+
+    return events;
+  }
+
+  // Analyze commit patterns from events
+  async getCommitStats(username: string): Promise<CommitStats> {
+    const events = await this.getUserEvents(username);
+    
+    const pushEvents = events.filter(e => e.type === 'PushEvent');
+    
+    const commitsByDayOfWeek: Record<string, number> = {
+      Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0,
+      Thursday: 0, Friday: 0, Saturday: 0
+    };
+    const commitsByHour: Record<number, number> = {};
+    for (let i = 0; i < 24; i++) commitsByHour[i] = 0;
+    
+    const commitDatesSet = new Set<string>();
+    let totalCommits = 0;
+    
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    for (const event of pushEvents) {
+      const date = new Date(event.created_at);
+      const dayOfWeek = days[date.getDay()];
+      const hour = date.getHours();
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const commitCount = event.payload.size || event.payload.commits?.length || 1;
+      totalCommits += commitCount;
+      
+      commitsByDayOfWeek[dayOfWeek] += commitCount;
+      commitsByHour[hour] += commitCount;
+      commitDatesSet.add(dateStr);
+    }
+    
+    // Find most active day and hour
+    const mostActiveDay = Object.entries(commitsByDayOfWeek)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
+    const mostActiveHour = Number(Object.entries(commitsByHour)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] || 0);
+    
+    // Calculate streaks
+    const commitDates = Array.from(commitDatesSet).sort();
+    let streakDays = 0;
+    let longestStreak = 0;
+    let currentStreak = 0;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    for (let i = commitDates.length - 1; i >= 0; i--) {
+      const currentDate = new Date(commitDates[i]);
+      const prevDate = i > 0 ? new Date(commitDates[i - 1]) : null;
+      
+      if (i === commitDates.length - 1) {
+        // Check if last commit was today or yesterday
+        const daysDiff = differenceInDays(new Date(today), currentDate);
+        if (daysDiff <= 1) {
+          currentStreak = 1;
+          streakDays = 1;
+        }
+      }
+      
+      if (prevDate) {
+        const diff = differenceInDays(currentDate, prevDate);
+        if (diff === 1) {
+          currentStreak++;
+          if (currentStreak > longestStreak) {
+            longestStreak = currentStreak;
+          }
+          if (i === commitDates.length - 1 - streakDays) {
+            streakDays = currentStreak;
+          }
+        } else {
+          currentStreak = 1;
+        }
+      }
+    }
+    
+    longestStreak = Math.max(longestStreak, currentStreak);
+    
+    // Calculate personality traits
+    const weekendCommits = commitsByDayOfWeek['Saturday'] + commitsByDayOfWeek['Sunday'];
+    const weekdayCommits = totalCommits - weekendCommits;
+    const weekendWarrior = weekendCommits > weekdayCommits / 5 * 2; // More than average weekday rate
+    
+    const nightCommits = commitsByHour[22] + commitsByHour[23] + commitsByHour[0] + commitsByHour[1];
+    const nightOwl = nightCommits > totalCommits * 0.2;
+    
+    const earlyCommits = commitsByHour[5] + commitsByHour[6] + commitsByHour[7] + commitsByHour[8];
+    const earlyBird = earlyCommits > totalCommits * 0.2;
+    
+    const daysWithCommits = commitDates.length;
+    const averageCommitsPerDay = daysWithCommits > 0 ? totalCommits / daysWithCommits : 0;
+    
+    return {
+      totalCommits,
+      commitsByDayOfWeek,
+      commitsByHour,
+      mostActiveDay,
+      mostActiveHour,
+      streakDays,
+      longestStreak,
+      commitDates,
+      averageCommitsPerDay,
+      weekendWarrior,
+      nightOwl,
+      earlyBird,
+    };
   }
 }

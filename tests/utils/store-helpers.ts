@@ -12,6 +12,7 @@ const { fetchUser, fetchRepos, fetchStats, clearUser } = userActions;
 
 const profileBuilderState = useProfileBuilderStore.getState();
 const profileBuilderActions = {
+  setBuilderMode: profileBuilderState.setBuilderMode,
   selectTemplate: profileBuilderState.selectTemplate,
   setFilterCategory: profileBuilderState.setFilterCategory,
   setSearchQuery: profileBuilderState.setSearchQuery,
@@ -26,6 +27,16 @@ const profileBuilderActions = {
   deployToGitHub: profileBuilderState.deployToGitHub,
   loadBackups: profileBuilderState.loadBackups,
   restoreFromBackup: profileBuilderState.restoreFromBackup,
+  // Portfolio-specific actions
+  updatePortfolioSection: profileBuilderState.updatePortfolioSection,
+  togglePortfolioSection: profileBuilderState.togglePortfolioSection,
+  reorderPortfolioSections: profileBuilderState.reorderPortfolioSections,
+  updatePortfolioTheme: profileBuilderState.updatePortfolioTheme,
+  updatePortfolioNav: profileBuilderState.updatePortfolioNav,
+  updatePortfolioSocial: profileBuilderState.updatePortfolioSocial,
+  checkPortfolioRepoStatus: profileBuilderState.checkPortfolioRepoStatus,
+  deployPortfolioToGitHub: profileBuilderState.deployPortfolioToGitHub,
+  getFilteredTemplates: profileBuilderState.getFilteredTemplates,
   reset: profileBuilderState.reset,
 };
 const initialTemplates = profileBuilderState.templates;
@@ -127,15 +138,18 @@ export const resetUserStore = () => {
 
 export const resetProfileBuilderStore = () => {
   useProfileBuilderStore.setState({
+    builderMode: 'readme',
     templates: initialTemplates,
     selectedTemplate: null,
     filterCategory: null,
     searchQuery: '',
     customization: null,
+    portfolioCustomization: null,
     isDirty: false,
     previewMarkdown: '',
     editorMode: 'form',
     profileRepoStatus: null,
+    portfolioRepoStatus: null,
     backups: [],
     isDeploying: false,
     deployError: null,

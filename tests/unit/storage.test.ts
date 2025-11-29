@@ -47,6 +47,32 @@ describe('BrowserStorage', () => {
     expect(retrieved).toEqual(userData);
   });
 
+  it('should cache commit stats data', () => {
+    const commitStats = {
+      totalCommits: 100,
+      commitsByDayOfWeek: { Monday: 20, Tuesday: 15 },
+      commitsByHour: { 9: 10, 10: 15 },
+      mostActiveDay: 'Monday',
+      mostActiveHour: 10,
+      streakDays: 5,
+      longestStreak: 10,
+      commitDates: ['2023-01-01', '2023-01-02'],
+      averageCommitsPerDay: 2.5,
+      weekendWarrior: false,
+      nightOwl: false,
+      earlyBird: true,
+    };
+    BrowserStorage.cacheCommitStats('testuser', commitStats);
+
+    const retrieved = BrowserStorage.getCachedCommitStats('testuser');
+    expect(retrieved).toEqual(commitStats);
+  });
+
+  it('should return null for non-existent commit stats', () => {
+    const retrieved = BrowserStorage.getCachedCommitStats('nonexistent');
+    expect(retrieved).toBeNull();
+  });
+
   it('should clear all cached data', () => {
     BrowserStorage.set('key1', 'value1');
     BrowserStorage.set('key2', 'value2');

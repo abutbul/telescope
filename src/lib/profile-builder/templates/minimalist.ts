@@ -11,6 +11,7 @@ export const minimalistTemplate: ProfileTemplate = {
   difficulty: 'beginner',
   lastUpdated: '2025-11-22',
   tags: ['simple', 'clean', 'minimal', 'beginner-friendly'],
+  mode: 'readme',
   
   markdown: `### Hey there 👋
 
