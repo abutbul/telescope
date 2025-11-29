@@ -615,8 +615,6 @@ test.describe('Full E2E Test Suite', () => {
       await page.waitForTimeout(500);
 
       // The portfolio button should now be active/highlighted (has different styling)
-      // Look for portfolio templates or "Website" badges
-      const websiteBadges = page.locator('text=Website');
       await page.waitForTimeout(500);
       
       // Verify we're in portfolio mode by checking the mode context or visible elements

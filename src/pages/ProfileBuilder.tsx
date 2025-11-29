@@ -20,7 +20,6 @@ export default function ProfileBuilder() {
     setEditorMode,
     generatePreview,
     checkProfileRepoStatus,
-    checkPortfolioRepoStatus,
     deployToGitHub,
     deployPortfolioToGitHub,
   } = useProfileBuilderStore();

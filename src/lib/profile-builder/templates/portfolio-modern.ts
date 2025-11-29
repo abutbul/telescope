@@ -1,4 +1,4 @@
-import { PortfolioTemplate, PortfolioSection } from '../types';
+import { PortfolioTemplate } from '../types';
 
 /**
  * Modern Portfolio Template
