@@ -109,6 +109,44 @@ describe('Stars page', () => {
     useAuthStore.setState({ token: 'token-stars' });
   });
 
+  it('shows loading message while fetching starred repositories', () => {
+    const fetchMyStars = vi.fn();
+
+    useStarsStore.setState({
+      myStars: [],
+      targetUserStars: [],
+      targetUsername: null,
+      isLoading: false,
+      isLoadingMyStars: true,
+      copyProgress: { total: 0, completed: 0, failed: 0, inProgress: false },
+      fetchMyStars,
+    });
+
+    render(<StarsPage />);
+
+    expect(screen.getByText(/loading your starred repositories/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no starred repositories yet/i)).not.toBeInTheDocument();
+  });
+
+  it('shows empty state message when loading is complete and no stars found', () => {
+    const fetchMyStars = vi.fn();
+
+    useStarsStore.setState({
+      myStars: [],
+      targetUserStars: [],
+      targetUsername: null,
+      isLoading: false,
+      isLoadingMyStars: false,
+      copyProgress: { total: 0, completed: 0, failed: 0, inProgress: false },
+      fetchMyStars,
+    });
+
+    render(<StarsPage />);
+
+    expect(screen.getByText(/no starred repositories yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/loading your starred repositories/i)).not.toBeInTheDocument();
+  });
+
   it('allows searching, selecting, copying and clearing stars', async () => {
     const fetchMyStars = vi.fn();
     const fetchUserStars = vi.fn();
