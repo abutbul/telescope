@@ -1,5 +1,6 @@
 import { Settings, ToggleLeft, ToggleRight, Info } from 'lucide-react';
 import { useProfileBuilderStore } from '../../stores/profile-builder-store';
+import { isReadmeTemplate } from '../../lib/profile-builder/types';
 
 export default function CustomizationForm() {
   const { selectedTemplate, customization, updateVariable, toggleWidget } =
@@ -9,6 +10,7 @@ export default function CustomizationForm() {
 
   const hasVariables = selectedTemplate.variables.length > 0;
   const hasWidgets = customization.widgets.length > 0;
+  const isReadme = isReadmeTemplate(selectedTemplate);
   const hasCustomizationOptions = hasVariables || hasWidgets;
 
   return (
@@ -72,7 +74,7 @@ export default function CustomizationForm() {
           )}
 
           {/* Widgets */}
-          {hasWidgets && (
+          {hasWidgets && isReadme && (
             <div>
               <h3 className="text-sm font-medium text-gray-400 mb-4">Widgets & Features</h3>
               <div className="space-y-3">
