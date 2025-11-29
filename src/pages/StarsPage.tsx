@@ -81,7 +81,9 @@ export default function StarsPage() {
           <h3 className="text-xl font-bold mb-4">Your Starred Repositories</h3>
           <div className="max-h-[300px] overflow-y-auto border border-github-border rounded-lg p-4 bg-github-dimmed/30">
             {myStars.length === 0 ? (
-              <p className="text-github-muted">No starred repositories yet.</p>
+              <p className="text-github-muted">
+                {isLoadingMyStars ? 'Loading your starred repositories...' : 'No starred repositories yet.'}
+              </p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {myStars.map((star) => (
